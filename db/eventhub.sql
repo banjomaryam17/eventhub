@@ -2,9 +2,12 @@ CREATE TABLE users (
     id              BIGSERIAL PRIMARY KEY,
     email           TEXT UNIQUE NOT NULL,
     password_hash   TEXT NOT NULL,
-    role            TEXT NOT NULL DEFAULT 'user',
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    role            TEXT NOT NULL DEFAULT 'user'
+                    CHECK (role IN ('user', 'admin')),
+    is_verified     BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
 CREATE TABLE followers (
     follower_id     BIGINT NOT NULL,
     following_id    BIGINT NOT NULL,
