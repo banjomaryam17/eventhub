@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     );
 
   } catch (err: any) {
-    // PostgreSQL unique constraint violation
+    // unique constraint violation
     if (err.code === "23505") {
       return NextResponse.json(
         { error: "Email or username already in use" },
