@@ -34,11 +34,11 @@ export default function RegisterPage() {
         return;
       }
 
-      // Login successful
+      // Register successful
       if (data.role === "admin") {
         router.push("/admin");
       } else {
-        router.push("/");
+        router.push("/auth/login");
       }
 
     } catch {
@@ -61,7 +61,7 @@ return (
         <form onSubmit={handleRegister} className="mt-8 space-y-5">
         
         <input 
-            type="username"
+            type="text"
             placeholder="Username"
             className="w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-400"
             value={username}
@@ -95,7 +95,7 @@ return (
         </form>
         <p className="text-center text-sm text-slate-500 mt-6">
         Already have an account?{" "}
-        <a href="/auth/register" className="text-slate-800 font-medium">
+        <a href="/auth/login" className="text-slate-800 font-medium">
             Login in
         </a>
         </p>

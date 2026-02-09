@@ -37,7 +37,7 @@ export default function LoginPage() {
       if (data.role === "admin") {
         router.push("/admin");
       } else {
-        router.push("/");
+        router.push("/dashboard");
       }
 
     } catch {
@@ -47,7 +47,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 px-4">
+   <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 px-4">
     <div className="w-full max-w-md bg-white text-slate-800 rounded-2xl shadow-xl p-8">
 
         <h1 className="text-3xl font-semibold text-center text-slate-800">
