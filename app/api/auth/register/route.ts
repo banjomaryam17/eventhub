@@ -19,7 +19,8 @@ export async function POST(req: Request) {
       `
       INSERT INTO users (email, username, password_hash, role)
       VALUES ($1, $2, $3, 'user')
-      `,
+      `
+      ,
       [email, username, passwordHash]
     );
 
