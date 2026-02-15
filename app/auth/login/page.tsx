@@ -35,7 +35,7 @@ export default function LoginPage() {
 
       // Login successful
       if (data.role === "admin") {
-        router.push("/admin");
+   
       } else {
         router.push("/dashboard");
       }
