@@ -130,3 +130,61 @@ CREATE TABLE user_reputation (
 
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+/* Calculate reputation score using average among sales, by default their score will be 100% if they have one good sale, any negative sale
+removes from this precentage. Having 100 sales, 160 good and 40 bad will give you a score of 80% for example. Just calculate average in backend*/
+
+CREATE TABLE listings (
+    id              BIGSERIAL PRIMARY KEY,
+    seller_id       BIGINT NOT NULL,
+    title           TEXT NOT NULL,
+    description     TEXT,
+    price           NUMERIC(10,2) NOT NULL CHECK (price >= 0),
+    quantity        INTEGER NOT NULL CHECK (quantity >= 0),
+    image_url       TEXT,
+    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE carts (
+    id          BIGSERIAL PRIMARY KEY,
+    user_id     BIGINT NOT NULL UNIQUE,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE cart_items (
+    cart_id     BIGINT NOT NULL,
+    listing_id  BIGINT NOT NULL,
+    quantity    INTEGER NOT NULL CHECK (quantity > 0),
+    added_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (cart_id, listing_id),
+    FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
+    FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE
+);
+
+CREATE TABLE order_items (
+    id              BIGSERIAL PRIMARY KEY,
+    order_id        BIGINT NOT NULL,
+    listing_id      BIGINT NOT NULL,
+    seller_id       BIGINT NOT NULL,
+    title_snapshot  TEXT NOT NULL,
+    price_snapshot  NUMERIC(10,2) NOT NULL CHECK (price_snapshot >= 0),
+    quantity        INTEGER NOT NULL CHECK (quantity > 0),
+    subtotal        NUMERIC(10,2) NOT NULL CHECK (subtotal >= 0),
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (listing_id) REFERENCES listings(id),
+    FOREIGN KEY (seller_id) REFERENCES users(id)
+);
+
+/* CREATE INDEX idx_listings_seller ON listings(seller_id);
+CREATE INDEX idx_cart_items_listing ON cart_items(listing_id);
+CREATE INDEX idx_order_items_order ON order_items(order_id);
+CREATE INDEX idx_orders_user ON orders(user_id); 
+
+CREATE UNIQUE INDEX one_default_address_per_user
+ON shipping_addresses(user_id)
+WHERE is_default = TRUE;*/
