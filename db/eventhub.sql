@@ -180,11 +180,11 @@ CREATE TABLE order_items (
     FOREIGN KEY (seller_id) REFERENCES users(id)
 );
 
-/* CREATE INDEX idx_listings_seller ON listings(seller_id);
+CREATE INDEX idx_listings_seller ON listings(seller_id);
 CREATE INDEX idx_cart_items_listing ON cart_items(listing_id);
 CREATE INDEX idx_order_items_order ON order_items(order_id);
 CREATE INDEX idx_orders_user ON orders(user_id); 
 
 CREATE UNIQUE INDEX one_default_address_per_user
 ON shipping_addresses(user_id)
-WHERE is_default = TRUE;*/
+WHERE is_default = TRUE;
