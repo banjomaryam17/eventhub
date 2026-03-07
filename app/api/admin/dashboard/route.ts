@@ -1,9 +1,8 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getSession } from "@/lib/session";
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const session = cookieStore.get("session");
+  const session = await getSession();
 
   if (!session) {
     return NextResponse.json(
@@ -12,9 +11,7 @@ export async function GET() {
     );
   }
 
-  const { role } = JSON.parse(session.value);
-
-  if (role !== "admin") {
+  if (session.role !== "admin") {
     return NextResponse.json(
       { error: "Admin access only" },
       { status: 403 }
