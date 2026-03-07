@@ -8,7 +8,7 @@ CREATE TABLE users (
     is_verified     BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
+/*
 
 CREATE TABLE followers (
     follower_id     BIGINT NOT NULL,
@@ -19,6 +19,8 @@ CREATE TABLE followers (
     FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE,
     CHECK (follower_id <> following_id)
 );
+*/
+/*
 CREATE TABLE posts (
     id              BIGSERIAL PRIMARY KEY,
     user_id         BIGINT NOT NULL,
@@ -27,7 +29,8 @@ CREATE TABLE posts (
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-CREATE TABLE comments (
+*/
+CREATE TABLE reviews (
     id              BIGSERIAL PRIMARY KEY,
     post_id         BIGINT NOT NULL,
     user_id         BIGINT NOT NULL,
@@ -37,6 +40,7 @@ CREATE TABLE comments (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+/*
 CREATE TABLE post_likes (
     post_id         BIGINT NOT NULL,
     user_id         BIGINT NOT NULL,
@@ -45,6 +49,7 @@ CREATE TABLE post_likes (
     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+*/
 
 CREATE TABLE blocked_users (
     blocker_id   BIGINT NOT NULL,
