@@ -63,7 +63,7 @@ CREATE TABLE reviews (
         AND rating * 2 = FLOOR(rating * 2)
     )
 );
-*/
+
 
 CREATE TABLE reports (
     report_id       BIGSERIAL PRIMARY KEY,
@@ -207,7 +207,7 @@ CREATE INDEX idx_listings_seller ON listings(seller_id);
 CREATE INDEX idx_cart_items_listing ON cart_items(listing_id);
 CREATE INDEX idx_order_items_order ON order_items(order_id);
 CREATE INDEX idx_orders_user ON orders(user_id); 
-CREATE INDEX idx_wishlist_product ON wishlist(product_id);
+CREATE INDEX idx_wishlist_listing ON wishlist(listing_id);
 
 CREATE UNIQUE INDEX one_default_address_per_user
 ON shipping_addresses(user_id)
