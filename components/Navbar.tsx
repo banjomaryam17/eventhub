@@ -31,13 +31,14 @@ const Navbar = () => {
                                 </Link>
                             </li>
                             <li className="nav-item">
-                                <Link href="services"
+                                <Link href="/services"
                                     className="nav-item nav-link 
                                                 text-light">
                                     Marketplace
                                 </Link>
                             </li>
-                            add accordion in here for login/logout related features
+                            
+                          {/* add accordion in here for login/logout related features*/ }  
                         </ul>
                     </div>
                 </div>
