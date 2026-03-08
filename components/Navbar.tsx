@@ -11,7 +11,7 @@ const Navbar = () => {
                     <Link className="navbar-brand 
                                     text-light font-bold"
                         href="/">
-                        EVENTHUB
+                        Haul.co
                     </Link>
                     <div className="collapse navbar-collapse"
                         id="navbarNav">
