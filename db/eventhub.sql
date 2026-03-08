@@ -8,19 +8,11 @@ CREATE TABLE users (
     is_verified     BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-<<<<<<< HEAD
-/*
-
-CREATE TABLE followers (
-    follower_id     BIGINT NOT NULL,
-    following_id    BIGINT NOT NULL,
-=======
 
 CREATE TABLE categories (
     id              BIGSERIAL PRIMARY KEY,
     name            TEXT NOT NULL UNIQUE,
     parent_id       BIGINT,
->>>>>>> Elliot
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
 );
@@ -167,6 +159,7 @@ CREATE TABLE order_items (
     FOREIGN KEY (seller_id) REFERENCES users(id)
 );
 
+/*
 CREATE TABLE followers (
     follower_id     BIGINT NOT NULL,
     following_id    BIGINT NOT NULL,
@@ -176,6 +169,7 @@ CREATE TABLE followers (
     FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE,
     CHECK (follower_id <> following_id)
 );
+*/
 
 CREATE TABLE blocked_users (
     blocker_id   BIGINT NOT NULL,
