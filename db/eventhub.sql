@@ -12,6 +12,7 @@ CREATE TABLE users (
 CREATE TABLE categories (
     id              BIGSERIAL PRIMARY KEY,
     name            TEXT NOT NULL UNIQUE,
+    slug            TEXT NOT NULL UNIQUE,
     parent_id       BIGINT,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
@@ -159,17 +160,6 @@ CREATE TABLE order_items (
     FOREIGN KEY (seller_id) REFERENCES users(id)
 );
 
-/*
-CREATE TABLE followers (
-    follower_id     BIGINT NOT NULL,
-    following_id    BIGINT NOT NULL,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (follower_id, following_id),
-    FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE,
-    CHECK (follower_id <> following_id)
-);
-*/
 
 CREATE TABLE blocked_users (
     blocker_id   BIGINT NOT NULL,
@@ -220,6 +210,8 @@ CREATE UNIQUE INDEX one_primary_image_per_listing
 ON listing_images(listing_id)
 WHERE is_primary = TRUE;
 
+CREATE INDEX id_listings_category ON listings(category_id);
+
 CREATE OR REPLACE FUNCTION update_listing_rating()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -245,3 +237,31 @@ AFTER INSERT OR UPDATE OR DELETE
 ON reviews
 FOR EACH ROW
 EXECUTE FUNCTION update_listing_rating();
+
+/* Automatically update listings and orders */
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_listings_updated_at
+BEFORE UPDATE ON listings
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER trigger_orders_updated_at
+BEFORE UPDATE ON orders
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+/*Seed Data for category*/
+INSERT INTO categories (name, slug) VALUES
+    ('Electronics',   'electronics'),
+    ('Clothing',      'clothing'),
+    ('Books',         'books'),
+    ('Home & Garden', 'home-garden'),
+    ('Sports',        'sports'),
+    ('Toys & Games',  'toys-games'),
+    ('Vehicles',      'vehicles'),
+    ('Other',         'other');
