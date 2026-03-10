@@ -1,3 +1,4 @@
+
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 
@@ -17,6 +18,7 @@ export async function getSession(): Promise<SessionPayload | null> {
     const { payload } = await jwtVerify(token, JWT_SECRET);
     return payload as unknown as SessionPayload;
   } catch {
+    // Token missing, expired, or tampered
     return null;
   }
 }
@@ -30,4 +32,3 @@ export async function requireAdmin(): Promise<SessionPayload> {
   }
   return session;
 }
-
