@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
+import { getSession } from "@/lib/session";
 
 export async function GET(req: Request) {
   try {
@@ -146,6 +147,152 @@ export async function GET(req: Request) {
     console.error("GET /api/listings error:", err);
     return NextResponse.json(
       { error: "Failed to fetch listings" },
+      { status: 500 }
+    );
+  }
+}
+export async function POST(req: Request) {
+  try {
+    // Auth check — must be logged in 
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json(
+        { error: "You must be logged in to create a listing" },
+        { status: 401 }
+      );
+    }
+
+    //  Parse body 
+    const body = await req.json();
+    const {
+      title,
+      description,
+      price,
+      quantity,
+      condition,
+      category_id,
+      is_anonymous,
+      image_url,      // single image URL for now
+                      // Phase 2: replace with Cloudinary multi-image upload
+    } = body;
+
+    //3. Server-side validation 
+    if (!title || typeof title !== "string" || title.trim().length < 3) {
+      return NextResponse.json(
+        { error: "Title must be at least 3 characters" },
+        { status: 400 }
+      );
+    }
+
+    if (title.trim().length > 100) {
+      return NextResponse.json(
+        { error: "Title must be 100 characters or less" },
+        { status: 400 }
+      );
+    }
+
+    const parsedPrice = parseFloat(price);
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      return NextResponse.json(
+        { error: "Price must be a positive number" },
+        { status: 400 }
+      );
+    }
+
+    const parsedQuantity = parseInt(quantity);
+    if (isNaN(parsedQuantity) || parsedQuantity < 1) {
+      return NextResponse.json(
+        { error: "Quantity must be at least 1" },
+        { status: 400 }
+      );
+    }
+
+    const validConditions = ["new", "used", "refurbished"];
+    if (!condition || !validConditions.includes(condition)) {
+      return NextResponse.json(
+        { error: "Condition must be new, used, or refurbished" },
+        { status: 400 }
+      );
+    }
+
+    if (!category_id || isNaN(parseInt(category_id))) {
+      return NextResponse.json(
+        { error: "A valid category is required" },
+        { status: 400 }
+      );
+    }
+
+    // Check category exists 
+    const categoryCheck = await pool.query(
+      "SELECT id FROM categories WHERE id = $1",
+      [parseInt(category_id)]
+    );
+    if (categoryCheck.rows.length === 0) {
+      return NextResponse.json(
+        { error: "Selected category does not exist" },
+        { status: 400 }
+      );
+    }
+
+    //  Insert listing
+    const result = await pool.query(
+      `INSERT INTO listings
+        (seller_id, category_id, title, description, price, quantity, condition, is_anonymous)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, title, price, condition, is_active, created_at`,
+      [
+        session.userId,
+        parseInt(category_id),
+        title.trim(),
+        description?.trim() ?? null,
+        parsedPrice,
+        parsedQuantity,
+        condition,
+        is_anonymous === true, // defaults to false if not provided
+      ]
+    );
+
+    const newListing = result.rows[0];
+
+    //  Insert primary image if provided
+    // Phase 2: replace with Cloudinary upload handling
+    // For now: frontend sends a URL string directly
+    if (image_url && typeof image_url === "string" && image_url.trim()) {
+      await pool.query(
+        `INSERT INTO listing_images (listing_id, image_url, is_primary)
+         VALUES ($1, $2, TRUE)`,
+        [newListing.id, image_url.trim()]
+      );
+    }
+
+    //. Create user_reputation row if it doesn't exist yet ─
+    // First listing a user creates — ensures reputation tracking works
+    await pool.query(
+      `INSERT INTO user_reputation (user_id)
+       VALUES ($1)
+       ON CONFLICT DO NOTHING`,
+      [session.userId]
+    );
+
+    return NextResponse.json(
+      {
+        message: "Listing created successfully",
+        listing: {
+          id: newListing.id,
+          title: newListing.title,
+          price: newListing.price,
+          condition: newListing.condition,
+          is_active: newListing.is_active,
+          created_at: newListing.created_at,
+        },
+      },
+      { status: 201 }
+    );
+
+  } catch (err) {
+    console.error("POST /api/listings error:", err);
+    return NextResponse.json(
+      { error: "Failed to create listing" },
       { status: 500 }
     );
   }
