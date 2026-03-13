@@ -6,6 +6,7 @@ CREATE TABLE users (
     role            TEXT NOT NULL DEFAULT 'user'
                     CHECK (role IN ('user', 'admin')),
     is_verified     BOOLEAN NOT NULL DEFAULT FALSE,
+    is_banned       BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
