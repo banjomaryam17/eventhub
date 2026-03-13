@@ -37,6 +37,13 @@ export async function POST(req: Request) {
 
 
     const user = result.rows[0];
+    // if banned this is returned
+    if (user.is_banned) {
+      return NextResponse.json(
+        { error: "Account has been banned" },
+        { status: 403 }
+      );
+    }    
     // compare password if they match
    const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
