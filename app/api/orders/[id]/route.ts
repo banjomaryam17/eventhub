@@ -6,7 +6,7 @@ import { getSession } from "@/lib/session";
 // Only the buyer who placed it OR an admin can view it
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+{ params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSession();
@@ -14,7 +14,8 @@ export async function GET(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const orderId = parseInt(params.id);
+    const { id } = await params;
+    const orderId = parseInt(id);
     if (isNaN(orderId)) {
       return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
     }

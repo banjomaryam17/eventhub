@@ -7,7 +7,7 @@ import { getSession } from "@/lib/session";
 // Update quantity of a specific item in the cart
 export async function PUT(
   req: Request,
-  { params }: { params: { listingId: string } }
+ { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSession();
@@ -15,7 +15,8 @@ export async function PUT(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const listingId = parseInt(params.listingId);
+    const { id } = await params;
+    const listingId = parseInt(id);
     if (isNaN(listingId)) {
       return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
     }
@@ -87,15 +88,15 @@ export async function PUT(
 // Remove a specific item from the cart
 export async function DELETE(
   req: Request,
-  { params }: { params: { listingId: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
-
-    const listingId = parseInt(params.listingId);
+    const { id } = await params;
+    const listingId = parseInt(id);
     if (isNaN(listingId)) {
       return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
     }
