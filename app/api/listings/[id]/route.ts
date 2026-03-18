@@ -75,7 +75,7 @@ export async function GET(
         r.created_at,
         u.username AS reviewer_username
        FROM reviews r
-       JOIN users u ON r.buyer_id = u.id
+       JOIN users u ON r.user_id = u.id
        WHERE r.listing_id = $1
        ORDER BY r.created_at DESC
        LIMIT 10`,
