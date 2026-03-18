@@ -4,7 +4,7 @@ import { jwtVerify } from "jose";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
 
-const PROTECTED = ["/dashboard", "/checkout", "/orders", "/sell", "/profile"];
+const PROTECTED = ["/dashboard", "/checkout", "/orders", "/sell", "/profile","/cart"];
 const ADMIN_ONLY = ["/admin"];
 
 export async function middleware(request: NextRequest) {

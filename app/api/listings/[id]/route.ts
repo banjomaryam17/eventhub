@@ -6,10 +6,11 @@ import { getSession } from "@/lib/session";
 // Public — anyone can view a listing
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+{ params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const listingId = parseInt(params.id);
+   const { id } = await params;
+   const listingId = parseInt(id);
     if (isNaN(listingId)) {
       return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
     }
@@ -100,7 +101,7 @@ export async function GET(
 // Protected — only the seller who owns the listing can edit it
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+ { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     //Auth check 
@@ -108,8 +109,8 @@ export async function PUT(
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
-
-    const listingId = parseInt(params.id);
+    const { id } = await params;
+    const listingId = parseInt(id);
     if (isNaN(listingId)) {
       return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
     }
@@ -222,7 +223,7 @@ export async function PUT(
 // Protected — seller who owns it OR admin can delete
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+{ params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Auth check 
@@ -231,7 +232,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const listingId = parseInt(params.id);
+    const { id } = await params;
+    const listingId = parseInt(id);
     if (isNaN(listingId)) {
       return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
     }

@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { requireAdmin } from "@/lib/session";
 import { pool } from "@/lib/db";
 
 export async function GET() {
   try {
-    const session = await getSession();
-
-    if (!session) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
-    if (session.role !== "admin") {
-      return NextResponse.json({ error: "Admins only" }, { status: 403 });
-    }
+    const session = await requireAdmin();
+    if (session instanceof NextResponse) return session;
 
     const result = await pool.query(`
       SELECT
