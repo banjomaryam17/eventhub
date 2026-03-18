@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     const orderResult = await client.query(
       `INSERT INTO orders
         (buyer_id, item_cost, shipping_cost, total_price, status, stripe_payment_intent_id)
-       VALUES ($1, $2, $3, $4, 'paid', $5)
+        VALUES ($1, $2, $3, $4, 'processing', $5)
        RETURNING id`,
       [
         userId,
