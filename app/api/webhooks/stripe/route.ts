@@ -4,13 +4,11 @@ import { pool } from "@/lib/db";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-//  POST /api/webhooks/stripe
-// Stripe calls this endpoint when a payment is confirmed
 export async function POST(req: Request) {
   const body = await req.text();
   const signature = req.headers.get("stripe-signature");
 
-  // The webhook secret prevents anyone from faking a payment confirmation
+  //  Verify webhook came from Stripe 
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(
@@ -23,7 +21,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  //Only handle successful payments
+  //Only handle successful payments 
   if (event.type !== "payment_intent.succeeded") {
     return NextResponse.json({ received: true });
   }
@@ -32,7 +30,7 @@ export async function POST(req: Request) {
   const userId = parseInt(paymentIntent.metadata.user_id);
   const cartId = parseInt(paymentIntent.metadata.cart_id);
 
-  // 3. Get all cart items
+  // Get all cart items
   const itemsResult = await pool.query(
     `SELECT
       ci.quantity,
@@ -52,11 +50,16 @@ export async function POST(req: Request) {
   }
 
   const items = itemsResult.rows;
-  const total = items.reduce((sum, item) => {
+
+  // Calculate item cost total
+  const itemCost = items.reduce((sum, item) => {
     return sum + parseFloat(item.price) * item.quantity;
   }, 0);
 
-  //  4. Create order and order items in a transaction
+  const shippingCost = 0; // Free shipping for now — Phase 2
+  const totalPrice = itemCost + shippingCost;
+
+  // Create order in a transaction
   const client = await pool.connect();
 
   try {
@@ -65,54 +68,60 @@ export async function POST(req: Request) {
     // Create the order
     const orderResult = await client.query(
       `INSERT INTO orders
-        (buyer_id, total_price, status, stripe_payment_intent_id, stripe_charge_id)
-       VALUES ($1, $2, 'paid', $3, $4)
+        (buyer_id, item_cost, shipping_cost, total_price, status, stripe_payment_intent_id)
+       VALUES ($1, $2, $3, $4, 'paid', $5)
        RETURNING id`,
       [
         userId,
-        total.toFixed(2),
+        itemCost.toFixed(2),
+        shippingCost.toFixed(2),
+        totalPrice.toFixed(2),
         paymentIntent.id,
-        paymentIntent.latest_charge?.toString() ?? null,
       ]
     );
 
     const orderId = orderResult.rows[0].id;
 
-    // Insert each order item with price and title snapshots
+    // Insert each order item
     for (const item of items) {
+      const subtotal = parseFloat(item.price) * item.quantity;
+
       await client.query(
         `INSERT INTO order_items
-          (order_id, listing_id, quantity, price_snapshot, title_snapshot)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [orderId, item.listing_id, item.quantity, item.price, item.title]
+          (order_id, listing_id, seller_id, title_snapshot, price_snapshot, quantity, subtotal)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          orderId,
+          item.listing_id,
+          item.seller_id,
+          item.title,
+          item.price,
+          item.quantity,
+          subtotal.toFixed(2),
+        ]
       );
 
-      // Decrement stock for each purchased listing
+      // Decrement stock
       await client.query(
-        `UPDATE listings
-         SET quantity = quantity - $1
-         WHERE id = $2`,
+        `UPDATE listings SET quantity = quantity - $1 WHERE id = $2`,
         [item.quantity, item.listing_id]
       );
 
-      // If stock hits 0, mark listing as inactive automatically
+      // Mark inactive if out of stock
       await client.query(
-        `UPDATE listings
-         SET is_active = FALSE
-         WHERE id = $1 AND quantity <= 0`,
+        `UPDATE listings SET is_active = FALSE WHERE id = $1 AND quantity <= 0`,
         [item.listing_id]
       );
     }
 
-    // Clear the cart after successful order
+    // Clear cart after successful order
     await client.query(
       "DELETE FROM cart_items WHERE cart_id = $1",
       [cartId]
     );
 
     await client.query("COMMIT");
-
-    console.log(`Order ${orderId} created for user ${userId}`);
+    console.log(`✅ Order ${orderId} created for user ${userId}`);
 
   } catch (err) {
     await client.query("ROLLBACK");
