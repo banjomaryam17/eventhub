@@ -1,43 +1,118 @@
-async function getListings() {
-    const res = await fetch("http://localhost:3000/api/admin/listing", {
-      cache: "no-store",
-    });
-  
-    if (!res.ok) throw new Error("Failed to fetch listings");
-  
-    return res.json();
+"use client";
+
+import { useEffect, useState } from "react";
+import { LoadingSpinner, EmptyState } from "@/components/ui";
+
+interface Listing {
+  id: number;
+  title: string;
+  price: string;
+  condition: string;
+  quantity: number;
+  is_active: boolean;
+  category_name: string;
+  seller_username: string;
+  seller_email: string;
+  created_at: string;
+}
+
+export default function AdminListingsPage() {
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState("");
+  const [removing, setRemoving] = useState<number | null>(null);
+
+  async function fetchListings() {
+    try {
+      const res = await fetch("/api/admin/listings");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setListings(data.listings);
+    } catch (err: any) {
+      setError(err.message ?? "Failed to fetch listings");
+    } finally {
+      setLoading(false);
+    }
   }
-  
-  export default async function ListingsPage() {
-    const data = await getListings();
-  
-    return (
-      <div>
-        <h2 className="text-xl font-semibold mb-6">Listings</h2>
-  
-        <div className="space-y-4">
-          {data.listings.map((listing: any) => (
-            <div
-              key={listing.id}
-              className="bg-slate-900 p-4 rounded-lg flex justify-between"
-            >
-              <div>
-                <p className="font-medium">{listing.title}</p>
-                <p className="text-sm text-slate-400">
-                  €{listing.price} • {listing.seller}
-                </p>
-              </div>
-  
-              <span
-                className={`text-sm ${
-                  listing.is_active ? "text-green-400" : "text-red-400"
-                }`}
-              >
-                {listing.is_active ? "Active" : "Inactive"}
-              </span>
-            </div>
-          ))}
+
+  useEffect(() => { fetchListings(); }, []);
+
+  async function handleRemove(listingId: number, title: string) {
+    if (!confirm(`Remove "${title}"?`)) return;
+    setRemoving(listingId);
+    try {
+      const res = await fetch(`/api/admin/listings/${listingId}`, { method: "DELETE" });
+      if (res.ok) setListings((prev) => prev.filter((l) => l.id !== listingId));
+    } catch {
+      setError("Failed to remove listing");
+    } finally {
+      setRemoving(null);
+    }
+  }
+
+  if (loading) return <LoadingSpinner message="Loading listings..." />;
+
+  return (
+    <div>
+      <h2 className="text-xl font-semibold text-white mb-6">
+        Manage Listings
+        <span className="text-slate-500 font-normal text-base ml-2">({listings.length})</span>
+      </h2>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm mb-6">
+          {error}
         </div>
-      </div>
-    );
-  }
+      )}
+
+      {listings.length === 0 ? (
+        <EmptyState icon="🛍" title="No listings found" />
+      ) : (
+        <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-800 text-slate-400">
+              <tr>
+                <th className="text-left p-3">Title</th>
+                <th className="text-left p-3">Price</th>
+                <th className="text-left p-3">Seller</th>
+                <th className="text-left p-3">Category</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listings.map((listing) => (
+                <tr key={listing.id} className="border-t border-slate-800 hover:bg-slate-800/40">
+                  <td className="p-3 font-medium text-white max-w-xs">
+                    <p className="line-clamp-1">{listing.title}</p>
+                  </td>
+                  <td className="p-3 text-slate-300">€{parseFloat(listing.price).toFixed(2)}</td>
+                  <td className="p-3 text-slate-400">@{listing.seller_username}</td>
+                  <td className="p-3 text-slate-400">{listing.category_name}</td>
+                  <td className="p-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      listing.is_active
+                        ? "bg-emerald-400/10 text-emerald-400"
+                        : "bg-red-400/10 text-red-400"
+                    }`}>
+                      {listing.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td className="p-3">
+                    <button
+                      onClick={() => handleRemove(listing.id, listing.title)}
+                      disabled={removing === listing.id || !listing.is_active}
+                      className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-600/30 px-3 py-1 rounded-lg text-xs transition-colors disabled:opacity-30"
+                    >
+                      {removing === listing.id ? "Removing..." : "Remove"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

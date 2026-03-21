@@ -8,20 +8,23 @@ export async function GET() {
     const session = await requireAdmin();
     if (session instanceof NextResponse) return session;
 
-    const result = await pool.query(`
-      SELECT
-        listings.id,
-        listings.title,
-        listings.price,
-        listings.quantity,
-        listings.is_active,
-        listings.created_at,
-        users.username AS seller
-      FROM listings
-      JOIN users ON listings.seller_id = users.id
-      ORDER BY listings.created_at DESC
-    `);
-
+   const result = await pool.query(`
+  SELECT
+    listings.id,
+    listings.title,
+    listings.price,
+    listings.quantity,
+    listings.condition,
+    listings.is_active,
+    listings.created_at,
+    users.username  AS seller_username,
+    users.email     AS seller_email,
+    categories.name AS category_name
+  FROM listings
+  JOIN users      ON listings.seller_id   = users.id
+  JOIN categories ON listings.category_id = categories.id
+  ORDER BY listings.created_at DESC
+`);
     return NextResponse.json({
       listings: result.rows,
     });

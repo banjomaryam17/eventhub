@@ -1,56 +1,95 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import PageLayout from "@/components/PageLayout";
+import { Card, StatusBadge, LoadingSpinner } from "@/components/ui";
 
-async function getOrder(id: string) {
-  const res = await fetch(`http://localhost:3000/api/orders/${id}`, {
-    cache: "no-store",
-  });
+export default function OrderPage() {
+  const params = useParams();
+  const [order, setOrder]   = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]   = useState("");
 
-  if (!res.ok) throw new Error("Failed to fetch order");
+  useEffect(() => {
+    async function fetchOrder() {
+      try {
+        const res = await fetch(`/api/orders/${params.id}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        setOrder(data.order);
+      } catch (err: any) {
+        setError(err.message ?? "Failed to fetch order");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchOrder();
+  }, [params.id]);
 
-  return res.json();
-}
+  if (loading) return <PageLayout><LoadingSpinner message="Loading order..." /></PageLayout>;
 
-export default async function OrderPage({ params }: any) {
-  const data = await getOrder(params.id);
-  const order = data.order;
+  if (error) return (
+    <PageLayout>
+      <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm">
+        {error}
+      </div>
+    </PageLayout>
+  );
 
   return (
-    <PageLayout title={`Order #${order.id}`} showBack>
-      <div className="space-y-6">
+    <PageLayout title={`Order #${order.id}`} showBack backHref="/orders">
+      <div className="max-w-2xl flex flex-col gap-6">
 
-        {/* Order Info */}
-        <div className="bg-slate-900 p-5 rounded-xl">
-          <p className="text-sm text-slate-400">Status</p>
-          <p className="font-semibold capitalize">{order.status}</p>
-
-          <p className="text-sm text-slate-400 mt-3">Date</p>
-          <p>{new Date(order.created_at).toLocaleString()}</p>
-        </div>
+        {/* Order info */}
+        <Card>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Status</p>
+              <StatusBadge status={order.status} />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Date</p>
+              <p className="text-sm text-white">
+                {new Date(order.created_at).toLocaleDateString("en-IE", {
+                  day: "numeric", month: "long", year: "numeric"
+                })}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Total</p>
+              <p className="text-lg font-bold text-white">€{parseFloat(order.total_price).toFixed(2)}</p>
+            </div>
+          </div>
+        </Card>
 
         {/* Items */}
         <div>
-          <h2 className="text-lg font-semibold mb-4">Items</h2>
-
-          <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-white mb-4">Items</h2>
+          <div className="flex flex-col gap-3">
             {order.items.map((item: any) => (
-              <div
-                key={item.id}
-                className="bg-slate-900 p-4 rounded-lg flex gap-4"
-              >
-                {item.primary_image && (
-                  <img
-                    src={item.primary_image}
-                    className="w-16 h-16 object-cover rounded"
-                  />
-                )}
-
-                <div>
-                  <p className="font-medium">{item.title_snapshot}</p>
-                  <p className="text-sm text-slate-400">
-                    €{item.price_snapshot} × {item.quantity}
-                  </p>
+              <Card key={item.id} padding="sm">
+                <div className="flex gap-4">
+                  <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden flex-shrink-0">
+                    {item.primary_image ? (
+                      <img src={item.primary_image} alt={item.title_snapshot} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-2xl opacity-20">🛍</span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">{item.title_snapshot}</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      €{parseFloat(item.price_snapshot).toFixed(2)} × {item.quantity}
+                    </p>
+                    <p className="text-sm font-semibold text-white mt-1">
+                      €{(parseFloat(item.price_snapshot) * item.quantity).toFixed(2)}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         </div>

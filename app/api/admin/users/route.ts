@@ -24,18 +24,19 @@ export async function GET() {
 
     // Query users
     const result = await pool.query(`
-    SELECT 
-      u.id,
-      u.email,
-      u.username,
-      u.role,
-      u.is_banned,
-      u.created_at,
-      COUNT(l.id) AS listing_count
-    FROM users u
-    LEFT JOIN listings l ON l.seller_id = u.id
-    GROUP BY u.id
-    ORDER BY u.created_at DESC
+  SELECT 
+    u.id,
+    u.email,
+    u.username,
+    u.role,
+    u.created_at,
+    COUNT(DISTINCT l.id) AS listing_count,
+    COUNT(DISTINCT o.id) AS order_count
+  FROM users u
+  LEFT JOIN listings l ON l.seller_id = u.id
+  LEFT JOIN orders o   ON o.buyer_id  = u.id
+  GROUP BY u.id
+  ORDER BY u.created_at DESC
 `);
 
     return NextResponse.json({
