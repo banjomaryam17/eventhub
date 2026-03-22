@@ -1,21 +1,21 @@
 CREATE TABLE users (
     id              BIGSERIAL PRIMARY KEY,
     email           TEXT UNIQUE NOT NULL,
-    username        TEXT UNIQUE NOT NULL,
     password_hash   TEXT NOT NULL,
     role            TEXT NOT NULL DEFAULT 'user'
                     CHECK (role IN ('user', 'admin')),
-    is_verified     BOOLEAN NOT NULL DEFAULT FALSE,
     is_banned       BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    is_verified     BOOLEAN NOT NULL DEFAULT FALSE,
+    username        TEXT UNIQUE NOT NULL,
 );
 
 CREATE TABLE categories (
     id              BIGSERIAL PRIMARY KEY,
     name            TEXT NOT NULL UNIQUE,
-    slug            TEXT NOT NULL UNIQUE,
     parent_id       BIGINT,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    slug            TEXT NOT NULL UNIQUE,
     FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
 );
 
@@ -102,13 +102,13 @@ CREATE TYPE order_status_enum AS ENUM (
 
 CREATE TABLE orders (
     id                  BIGSERIAL PRIMARY KEY,
-    user_id             BIGINT NOT NULL,
+    buyer_id             BIGINT NOT NULL,
     shipping_address_id BIGINT NOT NULL,
     item_cost           NUMERIC(10,2) NOT NULL CHECK (item_cost >= 0),
     shipping_cost       NUMERIC(10,2) NOT NULL CHECK (shipping_cost >= 0),
     discount_applied    BOOLEAN NOT NULL DEFAULT FALSE,
     discount_amount     NUMERIC(10,2) DEFAULT 0 CHECK (discount_amount >= 0),
-    total_cost          NUMERIC(10,2) NOT NULL CHECK (total_cost >= 0),
+    total_price          NUMERIC(10,2) NOT NULL CHECK (total_cost >= 0),
     stripe_payment_intent_id TEXT,
     stripe_charge_id         TEXT,
     status              order_status_enum NOT NULL DEFAULT 'pending',
