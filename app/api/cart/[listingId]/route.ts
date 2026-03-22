@@ -3,11 +3,11 @@ import { pool } from "@/lib/db";
 import { getSession } from "@/lib/session";
 
 
-// ── PUT /api/cart/[listingId] 
+//  PUT /api/cart/[listingId] 
 // Update quantity of a specific item in the cart
 export async function PUT(
   req: Request,
- { params }: { params: Promise<{ id: string }> }
+ { params }: { params: Promise<{ listingId: string }> }
 ) {
   try {
     const session = await getSession();
@@ -15,8 +15,8 @@ export async function PUT(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const { id } = await params;
-    const listingId = parseInt(id);
+    const p = await params;
+    const listingId = parseInt(p.listingId);
     if (isNaN(listingId)) {
       return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
     }
@@ -88,15 +88,15 @@ export async function PUT(
 // Remove a specific item from the cart
 export async function DELETE(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ listingId: string }> }
 ) {
   try {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
-    const { id } = await params;
-    const listingId = parseInt(id);
+    const p = await params;
+    const listingId = parseInt(p.listingId);
     if (isNaN(listingId)) {
       return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
     }

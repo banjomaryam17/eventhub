@@ -255,8 +255,6 @@ export async function POST(req: Request) {
     const newListing = result.rows[0];
 
     //  Insert primary image if provided
-    // Phase 2: replace with Cloudinary upload handling
-    // For now: frontend sends a URL string directly
     if (image_url && typeof image_url === "string" && image_url.trim()) {
       await pool.query(
         `INSERT INTO listing_images (listing_id, image_url, is_primary)
