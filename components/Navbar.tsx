@@ -15,12 +15,24 @@ const Navbar = () => {
   const [user, setUser]         = useState<SessionUser | null>(null);
   const [loading, setLoading]   = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     fetch("/api/auth/session")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.user) setUser(data.user);
+        if (data?.user) {
+          setUser(data.user);
+          // Fetch cart count after session is confirmed
+          fetch("/api/cart")
+            .then((res) => res.ok ? res.json() : null)
+            .then((cartData) => {
+              if (cartData?.summary?.item_count) {
+                setCartCount(cartData.summary.item_count);
+              }
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -29,6 +41,7 @@ const Navbar = () => {
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
+    setCartCount(0);
     setMenuOpen(false);
     router.push("/auth/login");
   }
@@ -78,11 +91,16 @@ const Navbar = () => {
               <>
                 {user ? (
                   <>
-                    {/* Cart */}
-                    <Link href="/cart" className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors">
+                    {/* Cart with badge */}
+                    <Link href="/cart" className="relative text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
+                      {cartCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 text-white text-xs font-bold rounded-full flex items-center justify-center leading-none">
+                          {cartCount > 9 ? "9+" : cartCount}
+                        </span>
+                      )}
                     </Link>
 
                     {/* Sell button — desktop only */}
