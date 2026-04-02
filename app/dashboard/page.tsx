@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PageLayout from "@/components/PageLayout";
+import ConfirmModal from "@/components/ConfirmModal";
+
 import { Card, Button, Badge, ConditionBadge, LoadingSpinner, EmptyState } from "@/components/ui";
 
 interface Listing {
@@ -62,6 +64,7 @@ export default function SellerDashboardPage() {
   const [error, setError]             = useState("");
   const [deleting, setDeleting]       = useState<number | null>(null);
   const [activeTab, setActiveTab]     = useState<"listings" | "sales">("listings");
+  const [modal, setModal] = useState<any>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -96,18 +99,22 @@ export default function SellerDashboardPage() {
     fetchData();
   }, []);
 
-  async function handleDelete(listingId: number) {
-    if (!confirm("Are you sure you want to remove this listing?")) return;
-    setDeleting(listingId);
-    try {
-      const res = await fetch(`/api/listings/${listingId}`, { method: "DELETE" });
-      if (res.ok) setListings((prev) => prev.filter((l) => l.id !== listingId));
-    } catch {
-      setError("Failed to delete listing");
-    } finally {
-      setDeleting(null);
-    }
-  }
+  function handleDelete(listingId: number) {
+  setModal({
+    title: "Remove listing",
+    message: "Are you sure you want to remove this listing? This cannot be undone.",
+    confirmLabel: "Remove",
+    variant: "danger",
+    onConfirm: () => actuallyDelete(listingId),
+  });
+}
+
+async function actuallyDelete(listingId: number) {
+  setDeleting(listingId);
+  const res = await fetch(`/api/listings/${listingId}`, { method: "DELETE" });
+  if (res.ok) setListings((prev) => prev.filter((l) => l.id !== listingId));
+  setDeleting(null);
+}
 
   const activeListings   = listings.filter((l) => l.is_active);
   const inactiveListings = listings.filter((l) => !l.is_active);
@@ -171,7 +178,7 @@ export default function SellerDashboardPage() {
             </button>
           </div>
 
-          {/* ── Listings Tab ────────────────────────────────── */}
+          {/* ── Listings Tab  */}
           {activeTab === "listings" && (
             <>
               <div className="flex items-center justify-between mb-4">
@@ -242,7 +249,7 @@ export default function SellerDashboardPage() {
             </>
           )}
 
-          {/* ── Sales Tab ───────────────────────────────────── */}
+          {/*Sales Tab*/}
           {activeTab === "sales" && (
             <>
               {orders.length === 0 ? (
@@ -297,6 +304,7 @@ export default function SellerDashboardPage() {
           )}
         </>
       )}
+      <ConfirmModal config={modal} onClose={() => setModal(null)} />
     </PageLayout>
   );
 }

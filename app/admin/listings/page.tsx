@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { LoadingSpinner, EmptyState } from "@/components/ui";
+import ConfirmModal from "@/components/ConfirmModal";
 
 interface Listing {
   id: number;
@@ -21,6 +22,7 @@ export default function AdminListingsPage() {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
   const [removing, setRemoving] = useState<number | null>(null);
+  const [modal, setModal] = useState<any>(null);
 
   async function fetchListings() {
     try {
@@ -37,18 +39,22 @@ export default function AdminListingsPage() {
 
   useEffect(() => { fetchListings(); }, []);
 
-  async function handleRemove(listingId: number, title: string) {
-    if (!confirm(`Remove "${title}"?`)) return;
-    setRemoving(listingId);
-    try {
-      const res = await fetch(`/api/admin/listings/${listingId}`, { method: "DELETE" });
-      if (res.ok) setListings((prev) => prev.filter((l) => l.id !== listingId));
-    } catch {
-      setError("Failed to remove listing");
-    } finally {
-      setRemoving(null);
-    }
-  }
+  function handleRemove(listingId: number,title: string) {
+  setModal({
+    title: "Remove listing",
+    message: "Are you sure you want to remove this listing? This cannot be undone.",
+    confirmLabel: "Remove",
+    variant: "danger",
+    onConfirm: () => actuallyDelete(listingId),
+  });
+}
+
+async function actuallyDelete(listingId: number) {
+  setRemoving(listingId);
+  const res = await fetch(`/api/listings/${listingId}`, { method: "DELETE" });
+  if (res.ok) setListings((prev) => prev.filter((l) => l.id !== listingId));
+  setRemoving(null);
+}
 
   if (loading) return <LoadingSpinner message="Loading listings..." />;
 
@@ -113,6 +119,7 @@ export default function AdminListingsPage() {
           </table>
         </div>
       )}
+      <ConfirmModal config={modal} onClose={() => setModal(null)} />
     </div>
   );
 }

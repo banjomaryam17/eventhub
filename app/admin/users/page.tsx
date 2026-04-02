@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { LoadingSpinner, EmptyState } from "@/components/ui";
+import ConfirmModal from "@/components/ConfirmModal";
 
 interface User {
   id: number;
@@ -18,6 +19,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
   const [updating, setUpdating] = useState<number | null>(null);
+  const [modal, setModal]       = useState<any>(null);
 
   async function fetchUsers() {
     try {
@@ -34,26 +36,35 @@ export default function AdminUsersPage() {
 
   useEffect(() => { fetchUsers(); }, []);
 
-  async function handleRoleChange(userId: number, newRole: string) {
-    setUpdating(userId);
-    try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: newRole }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      // Update locally
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
-      );
-    } catch (err: any) {
-      setError(err.message ?? "Failed to update user");
-    } finally {
-      setUpdating(null);
-    }
+ function handleRoleChange(userId: number, newRole: string) {
+  setModal({
+    title: "Change user role",
+    message: `Are you sure you want to change this user's role to "${newRole}"?`,
+    confirmLabel: "Change role",
+    variant: "warning",
+    onConfirm: () => actuallyChangeRole(userId, newRole),
+  });
+}
+
+async function actuallyChangeRole(userId: number, newRole: string) {
+  setUpdating(userId);
+  try {
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: newRole }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+    );
+  } catch (err: any) {
+    setError(err.message ?? "Failed to update user");
+  } finally {
+    setUpdating(null);
   }
+}
 
   if (loading) return <LoadingSpinner message="Loading users..." />;
 
@@ -129,6 +140,7 @@ export default function AdminUsersPage() {
           </table>
         </div>
       )}
+      <ConfirmModal config={modal} onClose={() => setModal(null)} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageLayout from "@/components/PageLayout";
 import { Button, Card, LoadingSpinner, EmptyState } from "@/components/ui";
+import ConfirmModal from "@/components/ConfirmModal";
 import Link from "next/link";
 
 interface CartItem {
@@ -30,6 +31,7 @@ export default function CartPage() {
   const [loading, setLoading]   = useState(true);
   const [updating, setUpdating] = useState<number | null>(null);
   const [error, setError]       = useState("");
+  const [modal, setModal]       =useState<any>(null);
 
   async function fetchCart() {
     try {
@@ -70,17 +72,27 @@ export default function CartPage() {
     }
   }
 
-  async function removeItem(listingId: number) {
-    setUpdating(listingId);
-    try {
-      const res = await fetch(`/api/cart/${listingId}`, { method: "DELETE" });
-      if (res.ok) await fetchCart();
-    } catch {
-      setError("Failed to remove item");
-    } finally {
-      setUpdating(null);
-    }
+  function removeItem(listingId: number) {
+  setModal({
+    title: "Remove item",
+    message: "Are you sure you want to remove this item from your cart?",
+    confirmLabel: "Remove",
+    variant: "danger",
+    onConfirm: () => actuallyRemoveItem(listingId),
+  });
+}
+
+async function actuallyRemoveItem(listingId: number) {
+  setUpdating(listingId);
+  try {
+    const res = await fetch(`/api/cart/${listingId}`, { method: "DELETE" });
+    if (res.ok) await fetchCart();
+  } catch {
+    setError("Failed to remove item");
+  } finally {
+    setUpdating(null);
   }
+}
 
   if (loading) return (
     <PageLayout title="Your cart">
@@ -176,7 +188,7 @@ export default function CartPage() {
             ))}
           </div>
 
-          {/* ── Order Summary ───────────────────────────────── */}
+          {/*Order Summary */}
           <div className="lg:col-span-1">
             <Card className="sticky top-24">
               <h2 className="text-lg font-bold text-white mb-5">Order summary</h2>
@@ -226,6 +238,7 @@ export default function CartPage() {
           </div>
         </div>
       )}
+         <ConfirmModal config={modal} onClose={() => setModal(null)} />
     </PageLayout>
   );
 }
