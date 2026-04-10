@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
+import { getSession } from "@/lib/session";
 
 export async function GET(
   req: Request,
@@ -58,4 +59,19 @@ export async function GET(
       { status: 500 }
     );
   }
+
+  async function PUT(req: Request) {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Auth" }, { status: 401 });
+  
+    const { name, dob } = await req.json();
+  
+    await pool.query(
+      `UPDATE users SET name = $1, dob = $2 WHERE id = $3`,
+      [name, dob, session.userId]
+    );
+  
+    return NextResponse.json({ message: "Updated" });
+  }
+  
 }

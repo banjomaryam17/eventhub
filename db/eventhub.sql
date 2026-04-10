@@ -5,9 +5,9 @@ CREATE TABLE users (
     role            TEXT NOT NULL DEFAULT 'user'
                     CHECK (role IN ('user', 'admin')),
     is_banned       BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_verified     BOOLEAN NOT NULL DEFAULT FALSE,
-    username        TEXT UNIQUE NOT NULL,
+    username        TEXT UNIQUE NOT NULL
 );
 
 CREATE TABLE categories (
@@ -49,6 +49,21 @@ CREATE TABLE listing_images (
     FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE
 );
 
+CREATE TABLE discounts (
+    id BIGSERIAL PRIMARY KEY,
+    percentage NUMERIC(5,2),
+    expires_at TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE listing_discounts (
+    listing_id BIGINT,
+    discount_id BIGINT,
+    PRIMARY KEY (listing_id, discount_id),
+    FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+    FOREIGN KEY (discount_id) REFERENCES discounts(id) ON DELETE CASCADE
+);
+
 CREATE TABLE reviews (
     id              BIGSERIAL PRIMARY KEY,
     listing_id      BIGINT NOT NULL,
@@ -65,7 +80,6 @@ CREATE TABLE reviews (
         AND rating * 2 = FLOOR(rating * 2)
     )
 );
-
 
 CREATE TABLE reports (
     report_id       BIGSERIAL PRIMARY KEY,
@@ -173,6 +187,8 @@ CREATE TABLE blocked_users (
 );
 
 CREATE TABLE user_profiles (
+    name            TEXT,
+    dob             DATE,
     user_id         BIGINT PRIMARY KEY,
     profile_picture TEXT,
     bio             TEXT,
