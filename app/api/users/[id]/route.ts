@@ -24,11 +24,19 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Reputation
-    const repResult = await pool.query(
+    // Seller reputation
+    const sellerRep = await pool.query(
       `SELECT reputation_score, total_sales, is_verified_seller
-       FROM user_reputation
-       WHERE user_id = $1`,
+      FROM user_reputation
+      WHERE user_id = $1`,
+      [userId]
+    );
+
+    // Buyer reputation
+    const buyerRep = await pool.query(
+      `SELECT COUNT(*) AS total_purchases
+      FROM orders
+      WHERE buyer_id = $1 AND status = 'delivered'`,
       [userId]
     );
 
@@ -43,11 +51,17 @@ export async function GET(
     return NextResponse.json({
       user: {
         ...userResult.rows[0],
-        ...(repResult.rows[0] || {
+      
+        seller_reputation: sellerRep.rows[0] || {
           reputation_score: 0,
           total_sales: 0,
           is_verified_seller: false,
-        }),
+        },
+      
+        buyer_reputation: {
+          total_purchases: parseInt(buyerRep.rows[0]?.total_purchases || "0"),
+        },
+      
         listings: listingsResult.rows,
       },
     });
