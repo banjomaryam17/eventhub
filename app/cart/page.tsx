@@ -21,7 +21,11 @@ interface CartItem {
 
 interface CartSummary {
   item_count: number;
+  subtotal: number;
+  discount: number;
   total: number;
+  discount_percent: number;
+  discount_code: string | null;
 }
 
 export default function CartPage() {
@@ -32,10 +36,12 @@ export default function CartPage() {
   const [updating, setUpdating] = useState<number | null>(null);
   const [error, setError]       = useState("");
   const [modal, setModal]       =useState<any>(null);
+  const [discountCode, setDiscountCode] = useState("");
+  const [appliedCode, setAppliedCode] = useState("");
 
   async function fetchCart() {
     try {
-      const res = await fetch("/api/cart");
+      const res = await fetch(`/api/cart?discount=${appliedCode}`);
       if (res.status === 401) {
         router.push("/auth/login");
         return;
@@ -50,7 +56,7 @@ export default function CartPage() {
     }
   }
 
-  useEffect(() => { fetchCart(); }, []);
+  useEffect(() => { fetchCart(); }, [appliedCode]);
 
   async function updateQuantity(listingId: number, newQty: number) {
     setUpdating(listingId);
@@ -188,25 +194,73 @@ async function actuallyRemoveItem(listingId: number) {
             ))}
           </div>
 
-          {/*Order Summary */}
+          {/* Order Summary */}
           <div className="lg:col-span-1">
             <Card className="sticky top-24">
               <h2 className="text-lg font-bold text-white mb-5">Order summary</h2>
 
+              {/* Discount input */}
+              <div className="flex gap-2 mb-2">
+                <input
+                  value={discountCode}
+                  onChange={(e) => setDiscountCode(e.target.value)}
+                  placeholder="Discount code"
+                  className="flex-1 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm"
+                />
+                <button
+                  onClick={() => {
+                    setAppliedCode(discountCode);
+                    setDiscountCode("");
+                  }}
+                  className="px-4 py-2 bg-indigo-600 rounded-lg text-white text-sm hover:bg-indigo-500 transition-colors"
+                >
+                  Apply
+                </button>
+              </div>
+
+              {/* Applied code feedback */}
+              {summary?.discount_code && (
+                <p className="text-xs text-emerald-400 mb-3">
+                  Code "{summary.discount_code}" applied ({summary.discount_percent}% off)
+                </p>
+              )}
+
               <div className="flex flex-col gap-3 mb-5">
+                
+                {/* Subtotal */}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-400">
                     Subtotal ({summary?.item_count} item{summary?.item_count !== 1 ? "s" : ""})
                   </span>
-                  <span className="text-white font-medium">€{summary?.total.toFixed(2)}</span>
+                  <span className="text-white font-medium">
+                    €{summary?.subtotal.toFixed(2)}
+                  </span>
                 </div>
+
+                {/* Discount */}
+                {summary && summary.discount > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-emerald-400">
+                      Discount ({summary.discount_percent}%)
+                    </span>
+                    <span className="text-emerald-400">
+                      -€{summary.discount.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Shipping */}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-400">Shipping</span>
                   <span className="text-slate-400">Calculated at checkout</span>
                 </div>
+
+                {/* Total */}
                 <div className="border-t border-slate-800 pt-3 flex items-center justify-between">
                   <span className="font-semibold text-white">Total</span>
-                  <span className="font-bold text-xl text-white">€{summary?.total.toFixed(2)}</span>
+                  <span className="font-bold text-xl text-white">
+                    €{summary?.total.toFixed(2)}
+                  </span>
                 </div>
               </div>
 

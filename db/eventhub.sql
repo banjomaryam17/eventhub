@@ -175,6 +175,13 @@ CREATE TABLE order_items (
     FOREIGN KEY (seller_id) REFERENCES users(id)
 );
 
+CREATE TABLE discount_codes (
+  id SERIAL PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,
+  discount_percent INTEGER NOT NULL CHECK (discount_percent > 0 AND discount_percent <= 100),
+  is_active BOOLEAN DEFAULT TRUE,
+  expires_at TIMESTAMP
+);
 
 CREATE TABLE blocked_users (
     blocker_id   BIGINT NOT NULL,

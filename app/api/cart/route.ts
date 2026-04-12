@@ -4,7 +4,7 @@ import { getSession } from "@/lib/session";
 
 // GET /api/cart
 // Returns the logged-in user's cart with full listing details
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await getSession();
     if (!session) {
@@ -43,15 +43,46 @@ export async function GET() {
 
     // Calculate cart total
     const items = result.rows;
-    const total = items.reduce((sum, item) => {
-      return sum + parseFloat(item.price) * item.cart_quantity;
-    }, 0);
+
+    const subtotal = items.reduce((sum, item) => {
+    return sum + parseFloat(item.price) * item.cart_quantity;
+  }, 0);
+
+  // Discount handling
+  const { searchParams } = new URL(req.url);
+  const discountCode = searchParams.get("discount");
+
+  let discountPercent = 0;
+  let discountAmount = 0;
+  let appliedCode: string | null = null;
+
+  if (discountCode) {
+    const discountResult = await pool.query(
+      `SELECT * FROM discount_codes
+      WHERE code = $1
+        AND is_active = TRUE
+        AND (expires_at IS NULL OR expires_at > NOW())`,
+      [discountCode.toUpperCase()]
+    );
+
+    if (discountResult.rows.length > 0) {
+      discountPercent = discountResult.rows[0].discount_percent;
+      discountAmount = (subtotal * discountPercent) / 100;
+      appliedCode = discountCode.toUpperCase();
+    }
+  }
+
+    const total = subtotal - discountAmount;
 
     return NextResponse.json({
       items,
       summary: {
         item_count: items.length,
+        subtotal: parseFloat(subtotal.toFixed(2)),
+        discount: parseFloat(discountAmount.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
+        discount_code: appliedCode,
+        discount_percent: discountPercent,
       },
     });
 
