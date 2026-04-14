@@ -10,6 +10,7 @@ interface Listing {
   id: number;
   title: string;
   price: string;
+  quantity: number;
   condition: string;
   category_name: string;
   category_slug: string;
@@ -68,9 +69,14 @@ function ListingCard({ listing }: { listing: Listing }) {
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent" />
-          <div className="absolute top-3 left-3">
-            <ConditionBadge condition={listing.condition} />
-          </div>
+          <div className="absolute top-3 left-3 flex flex-col gap-1">
+  <ConditionBadge condition={listing.condition} />
+  {listing.quantity === 0 && (
+    <span className="text-xs font-semibold px-2 py-1 rounded-md bg-red-500/90 text-white backdrop-blur-sm">
+      Out of Stock
+    </span>
+  )}
+</div>
         </div>
 
         {/* Info */}
