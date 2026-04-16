@@ -11,45 +11,47 @@ export async function GET(
   try {
    const { id } = await params;
    const listingId = parseInt(id);
+   const session = await getSession();
+   const viewerId = session?.userId ?? null;
     if (isNaN(listingId)) {
       return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
     }
 
     // Main listing query with seller, category and reputation
-    const result = await pool.query(
-      `SELECT
-        l.id,
-        l.title,
-        l.description,
-        l.price,
-        l.quantity,
-        l.condition,
-        l.is_anonymous,
-        l.is_active,
-        l.average_rating,
-        l.review_count,
-        l.created_at,
-        l.updated_at,
-        c.id        AS category_id,
-        c.name      AS category_name,
-        c.slug      AS category_slug,
-        -- Hide seller identity if anonymous
-        CASE WHEN l.is_anonymous THEN NULL ELSE u.id        END AS seller_id,
-        CASE WHEN l.is_anonymous THEN 'Anonymous'
-             ELSE u.username                                END AS seller_username,
-        CASE WHEN l.is_anonymous THEN NULL
-             ELSE ur.is_verified_seller                     END AS seller_is_verified,
-        CASE WHEN l.is_anonymous THEN NULL
-             ELSE ur.reputation_score                       END AS seller_reputation,
-        CASE WHEN l.is_anonymous THEN NULL
-             ELSE ur.total_sales                            END AS seller_total_sales
-      FROM listings l
-      JOIN users u       ON l.seller_id   = u.id
-      JOIN categories c  ON l.category_id = c.id
-      LEFT JOIN user_reputation ur ON u.id = ur.user_id
-      WHERE l.id = $1`,
-      [listingId]
-    );
+   const result = await pool.query(
+  `SELECT
+    l.id,
+    l.title,
+    l.description,
+    l.price,
+    l.quantity,
+    l.condition,
+    l.is_anonymous,
+    l.is_active,
+    l.average_rating,
+    l.review_count,
+    l.created_at,
+    l.updated_at,
+    c.id        AS category_id,
+    c.name      AS category_name,
+    c.slug      AS category_slug,
+    -- Show real seller info if viewer IS the seller, hide if anonymous to others
+    CASE WHEN l.is_anonymous AND (u.id != $2 OR $2 IS NULL) THEN NULL ELSE u.id        END AS seller_id,
+    CASE WHEN l.is_anonymous AND (u.id != $2 OR $2 IS NULL) THEN 'Anonymous'
+        ELSE u.username                                               END AS seller_username,
+    CASE WHEN l.is_anonymous AND (u.id != $2 OR $2 IS NULL) THEN NULL
+        ELSE ur.is_verified_seller                                    END AS seller_is_verified,
+    CASE WHEN l.is_anonymous AND (u.id != $2 OR $2 IS NULL) THEN NULL
+        ELSE ur.reputation_score                                      END AS seller_reputation,
+    CASE WHEN l.is_anonymous AND (u.id != $2 OR $2 IS NULL) THEN NULL
+        ELSE ur.total_sales                                           END AS seller_total_sales
+  FROM listings l
+  JOIN users u       ON l.seller_id   = u.id
+  JOIN categories c  ON l.category_id = c.id
+  LEFT JOIN user_reputation ur ON u.id = ur.user_id
+  WHERE l.id = $1`,
+  [listingId, viewerId]
+);
 
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
