@@ -122,16 +122,16 @@ CREATE TABLE orders (
     shipping_cost       NUMERIC(10,2) NOT NULL CHECK (shipping_cost >= 0),
     discount_applied    BOOLEAN NOT NULL DEFAULT FALSE,
     discount_amount     NUMERIC(10,2) DEFAULT 0 CHECK (discount_amount >= 0),
-    total_price          NUMERIC(10,2) NOT NULL CHECK (total_cost >= 0),
+    total_price          NUMERIC(10,2) NOT NULL CHECK (total_price >= 0),
     stripe_payment_intent_id TEXT,
     stripe_charge_id         TEXT,
     status              order_status_enum NOT NULL DEFAULT 'pending',
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (shipping_address_id) REFERENCES shipping_addresses(id)
 );
-/* Calculate shipping in the backend, total_cost = item_cost + shipping_cost - discount_amount*/
+/* Calculate shipping in the backend, total_price = item_cost + shipping_cost - discount_amount*/
 
 CREATE TABLE carts (
     id          BIGSERIAL PRIMARY KEY,

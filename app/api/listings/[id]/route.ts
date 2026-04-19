@@ -37,16 +37,45 @@ export async function GET(
         CASE WHEN l.is_anonymous THEN NULL ELSE u.id        END AS seller_id,
         CASE WHEN l.is_anonymous THEN 'Anonymous'
              ELSE u.username                                END AS seller_username,
+             CASE WHEN l.is_anonymous THEN NULL
+             ELSE (
+               (
+                 COALESCE((
+                   SELECT ROUND(AVG(r.rating) * 20)
+                   FROM listings sl
+                   LEFT JOIN reviews r ON r.listing_id = sl.id
+                   WHERE sl.seller_id = u.id
+                 ), 100) >= 85
+               )
+               AND
+               (
+                 SELECT COUNT(DISTINCT oi.order_id)
+                 FROM order_items oi
+                 JOIN listings sl ON sl.id = oi.listing_id
+                 JOIN orders o ON o.id = oi.order_id
+                 WHERE sl.seller_id = u.id
+                   AND o.status = 'delivered'
+               ) >= 20
+             ) END AS seller_is_verified,
         CASE WHEN l.is_anonymous THEN NULL
-             ELSE ur.is_verified_seller                     END AS seller_is_verified,
+             ELSE COALESCE((
+               SELECT ROUND(AVG(r.rating) * 20)
+               FROM listings sl
+               LEFT JOIN reviews r ON r.listing_id = sl.id
+               WHERE sl.seller_id = u.id
+             ), 100) END AS seller_reputation,
         CASE WHEN l.is_anonymous THEN NULL
-             ELSE ur.reputation_score                       END AS seller_reputation,
-        CASE WHEN l.is_anonymous THEN NULL
-             ELSE ur.total_sales                            END AS seller_total_sales
+             ELSE (
+               SELECT COUNT(DISTINCT oi.order_id)
+               FROM order_items oi
+               JOIN listings sl ON sl.id = oi.listing_id
+               JOIN orders o ON o.id = oi.order_id
+               WHERE sl.seller_id = u.id
+                 AND o.status = 'delivered'
+             ) END AS seller_total_sales                           
       FROM listings l
       JOIN users u       ON l.seller_id   = u.id
       JOIN categories c  ON l.category_id = c.id
-      LEFT JOIN user_reputation ur ON u.id = ur.user_id
       WHERE l.id = $1`,
       [listingId]
     );
@@ -179,7 +208,6 @@ export async function PUT(
       }
     }
 
-    // ── Build update query dynamically ──────────────────────
     // Only update the fields that were actually sent
     const updates: string[] = [];
     const values: (string | number | boolean)[] = [];
@@ -259,11 +287,6 @@ export async function DELETE(
       );
     }
 
-    // Soft delete vs hard delete
-    // We use soft delete (is_active = false) instead of actually
-    // deleting the row. This preserves order history — if someone
-    // already purchased this listing, the order_items record still
-    // has the title_snapshot and price_snapshot so order history works.
     await pool.query(
       "UPDATE listings SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
       [listingId]
