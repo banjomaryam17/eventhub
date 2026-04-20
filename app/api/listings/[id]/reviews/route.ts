@@ -14,11 +14,17 @@ export async function POST(
 
     const { id } = await params;
     const listing_id = parseInt(id);
+    if (isNaN(listing_id)) {
+      return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
+    }
 
     const { rating, content } = await req.json();
 
-    if (!rating) {
-      return NextResponse.json({ error: "Rating required" }, { status: 400 });
+    if (!rating || rating < 1 || rating > 5 || !Number.isInteger(rating)) {
+      return NextResponse.json(
+        { error: "Rating must be an integer between 1 and 5" },
+        { status: 400 }
+      );
     }
 
     const purchaseCheck = await pool.query(
@@ -48,8 +54,8 @@ export async function POST(
 
     return NextResponse.json({ review: result.rows[0] });
 
-  } catch (err: any) {
-    if (err.code === "23505") {
+  } catch (err) {
+    if ((err as any).code === "23505") {
       return NextResponse.json(
         { error: "Already reviewed" },
         { status: 400 }
