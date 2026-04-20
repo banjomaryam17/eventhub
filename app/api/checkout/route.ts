@@ -12,7 +12,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 // Returns a client_secret the frontend uses to render Stripe Elements
 export async function POST() {
   try {
-    // 1. Auth check
+    //  Auth check
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });

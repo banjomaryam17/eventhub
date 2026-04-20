@@ -53,24 +53,47 @@ export default function CartPage() {
   useEffect(() => { fetchCart(); }, []);
 
   async function updateQuantity(listingId: number, newQty: number) {
-    setUpdating(listingId);
-    try {
-      const res = await fetch(`/api/cart/${listingId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity: newQty }),
-      });
-      if (res.ok) await fetchCart();
-      else {
-        const data = await res.json();
-        setError(data.error);
-      }
-    } catch {
-      setError("Failed to update item");
-    } finally {
-      setUpdating(null);
+  // Update UI immediately for responsive feel
+  setItems((prev) =>
+    prev.map((item) =>
+      item.listing_id === listingId
+        ? { ...item, cart_quantity: newQty }
+        : item
+    )
+  );
+  // Update summary total immediately
+  setSummary((prev) => {
+    if (!prev) return prev;
+    const updatedItems = items.map((item) =>
+      item.listing_id === listingId ? { ...item, cart_quantity: newQty } : item
+    );
+    const total = updatedItems.reduce(
+      (sum, item) => sum + parseFloat(item.price) * item.cart_quantity, 0
+    );
+    return { ...prev, total: parseFloat(total.toFixed(2)) };
+  });
+
+  setUpdating(listingId);
+  try {
+    const res = await fetch(`/api/cart/${listingId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quantity: newQty }),
+    });
+    if (res.ok) {
+      await fetchCart(); // Refresh from server to confirm
+    } else {
+      const data = await res.json();
+      setError(data.error);
+      await fetchCart(); // Revert to server state on error
     }
+  } catch {
+    setError("Failed to update item");
+    await fetchCart(); // Revert on error
+  } finally {
+    setUpdating(null);
   }
+}
 
   function removeItem(listingId: number) {
   setModal({
