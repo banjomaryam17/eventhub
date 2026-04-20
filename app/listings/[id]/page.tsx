@@ -61,6 +61,10 @@ export default function ListingDetailPage() {
   const [cartError, setCartError]     = useState("");
   const [quantity, setQuantity]       = useState(1);
   const [activeImage, setActiveImage] = useState(0);
+  const [rating, setRating] = useState(5);
+  const [reviewText, setReviewText] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewError, setReviewError] = useState("");
 
   // Fetch session and listing in parallel
   useEffect(() => {
@@ -121,6 +125,45 @@ export default function ListingDetailPage() {
       setCartError("Failed to add to cart");
     } finally {
       setAddingToCart(false);
+    }
+  }
+
+  async function handleSubmitReview() {
+    if (!user) {
+      router.push("/auth/login");
+      return;
+    }
+
+    setSubmittingReview(true);
+    setReviewError("");
+
+    try {
+      const res = await fetch(`/api/listings/${listingId}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating,
+          content: reviewText,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setReviewError(data.error || "Failed to submit review");
+      } else {
+        setReviewText("");
+        setRating(5);
+
+        // refresh listing to show new review
+        const updated = await fetch(`/api/listings/${listingId}`);
+        const updatedData = await updated.json();
+        setListing(updatedData.listing);
+      }
+    } catch {
+      setReviewError("Something went wrong");
+    } finally {
+      setSubmittingReview(false);
     }
   }
 

@@ -5,9 +5,9 @@ CREATE TABLE users (
     role            TEXT NOT NULL DEFAULT 'user'
                     CHECK (role IN ('user', 'admin')),
     is_banned       BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_verified     BOOLEAN NOT NULL DEFAULT FALSE,
-    username        TEXT UNIQUE NOT NULL,
+    username        TEXT UNIQUE NOT NULL
 );
 
 CREATE TABLE categories (
@@ -49,6 +49,21 @@ CREATE TABLE listing_images (
     FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE
 );
 
+CREATE TABLE discounts (
+    id BIGSERIAL PRIMARY KEY,
+    percentage NUMERIC(5,2),
+    expires_at TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE listing_discounts (
+    listing_id BIGINT,
+    discount_id BIGINT,
+    PRIMARY KEY (listing_id, discount_id),
+    FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+    FOREIGN KEY (discount_id) REFERENCES discounts(id) ON DELETE CASCADE
+);
+
 CREATE TABLE reviews (
     id              BIGSERIAL PRIMARY KEY,
     listing_id      BIGINT NOT NULL,
@@ -65,7 +80,6 @@ CREATE TABLE reviews (
         AND rating * 2 = FLOOR(rating * 2)
     )
 );
-
 
 CREATE TABLE reports (
     report_id       BIGSERIAL PRIMARY KEY,
@@ -108,16 +122,16 @@ CREATE TABLE orders (
     shipping_cost       NUMERIC(10,2) NOT NULL CHECK (shipping_cost >= 0),
     discount_applied    BOOLEAN NOT NULL DEFAULT FALSE,
     discount_amount     NUMERIC(10,2) DEFAULT 0 CHECK (discount_amount >= 0),
-    total_price          NUMERIC(10,2) NOT NULL CHECK (total_cost >= 0),
+    total_price          NUMERIC(10,2) NOT NULL CHECK (total_price >= 0),
     stripe_payment_intent_id TEXT,
     stripe_charge_id         TEXT,
     status              order_status_enum NOT NULL DEFAULT 'pending',
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (shipping_address_id) REFERENCES shipping_addresses(id)
 );
-/* Calculate shipping in the backend, total_cost = item_cost + shipping_cost - discount_amount*/
+/* Calculate shipping in the backend, total_price = item_cost + shipping_cost - discount_amount*/
 
 CREATE TABLE carts (
     id          BIGSERIAL PRIMARY KEY,
@@ -161,6 +175,13 @@ CREATE TABLE order_items (
     FOREIGN KEY (seller_id) REFERENCES users(id)
 );
 
+CREATE TABLE discount_codes (
+  id SERIAL PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,
+  discount_percent INTEGER NOT NULL CHECK (discount_percent > 0 AND discount_percent <= 100),
+  is_active BOOLEAN DEFAULT TRUE,
+  expires_at TIMESTAMP
+);
 
 CREATE TABLE blocked_users (
     blocker_id   BIGINT NOT NULL,
@@ -173,6 +194,8 @@ CREATE TABLE blocked_users (
 );
 
 CREATE TABLE user_profiles (
+    name            TEXT,
+    dob             DATE,
     user_id         BIGINT PRIMARY KEY,
     profile_picture TEXT,
     bio             TEXT,
