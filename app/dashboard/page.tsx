@@ -82,7 +82,9 @@ export default function SellerDashboardPage() {
 
         const listingsData = await listingsRes.json();
         const myListings = listingsData.listings.filter(
-          (l: any) => l.seller_id === sessionData.user.userId
+          (l: any) =>
+            l.seller_id === sessionData.user.userId ||
+            (l.seller_id === null && l.is_anonymous)
         );
         setListings(myListings);
 

@@ -84,7 +84,7 @@ async function actuallyLogout() {
               {user && (
                 <>
                   <Link href="/orders" className="text-slate-400 hover:text-white text-sm px-3 py-2 rounded-xl hover:bg-slate-800 transition-colors">
-                    Orders
+                    My Orders
                   </Link>
                   <Link href="/dashboard" className="text-slate-400 hover:text-white text-sm px-3 py-2 rounded-xl hover:bg-slate-800 transition-colors">
                     Dashboard
