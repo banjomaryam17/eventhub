@@ -20,7 +20,7 @@ export async function POST(
 
     const { rating, content } = await req.json();
 
-    if (!rating || rating < 1 || rating > 5 || !Number.isInteger(rating)) {
+    if (!rating || rating < 1 || rating > 5) {
       return NextResponse.json(
         { error: "Rating must be an integer between 1 and 5" },
         { status: 400 }
@@ -33,7 +33,7 @@ export async function POST(
        JOIN orders o ON oi.order_id = o.id
        WHERE o.buyer_id = $1
          AND oi.listing_id = $2
-         AND o.status = 'delivered'
+         AND o.status IN ('processing', 'shipped', 'delivered')
        LIMIT 1`,
       [session.userId, listing_id]
     );

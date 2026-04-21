@@ -420,6 +420,68 @@ export default function ListingDetailPage() {
           </div>
         )}
       </div>
+      {/* ── Leave a review */}
+      {user && !isOwnListing && !isAdmin && (
+        <div className="mt-8">
+          <h3 className="text-lg font-bold text-white mb-4">Leave a review</h3>
+          <Card>
+            <div className="flex flex-col gap-4">
+
+              {/* Star picker */}
+              <div>
+                <p className="text-sm text-slate-400 mb-2">Rating</p>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setRating(star)}
+                      className="text-2xl transition-transform hover:scale-110"
+                    >
+                      <span className={star <= rating ? "text-amber-400" : "text-slate-700"}>
+                        ★
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Review text */}
+              <div>
+                <p className="text-sm text-slate-400 mb-2">Review <span className="text-slate-600">(optional)</span></p>
+                <textarea
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  placeholder="Share your experience with this listing..."
+                  rows={3}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
+                />
+              </div>
+
+              {reviewError && (
+                <p className="text-red-400 text-sm">{reviewError}</p>
+              )}
+
+              <Button
+                onClick={handleSubmitReview}
+                disabled={submittingReview}
+              >
+                {submittingReview ? "Submitting..." : "Submit review"}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Not logged in prompt */}
+      {!user && (
+        <div className="mt-8">
+          <Card>
+            <p className="text-slate-500 text-sm text-center py-2">
+              <a href="/auth/login" className="text-indigo-400 hover:text-indigo-300">Sign in</a> to leave a review
+            </p>
+          </Card>
+        </div>
+      )}
     </PageLayout>
   );
 }
