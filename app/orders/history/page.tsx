@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import PageLayout from "@/components/PageLayout";
 import Link from "next/link";
 
