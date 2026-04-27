@@ -76,17 +76,12 @@ export default function SellerDashboardPage() {
 
         // Fetch listings and seller orders in parallel
         const [listingsRes, ordersRes] = await Promise.all([
-          fetch("/api/listings?limit=48"),
-          fetch("/api/seller/orders"),
-        ]);
+  fetch("/api/seller/listings"),
+  fetch("/api/seller/orders"),
+]);
 
-        const listingsData = await listingsRes.json();
-        const myListings = listingsData.listings.filter(
-          (l: any) =>
-            l.seller_id === sessionData.user.userId ||
-            (l.seller_id === null && l.is_anonymous)
-        );
-        setListings(myListings);
+const listingsData = await listingsRes.json();
+setListings(listingsData.listings ?? []);
 
         if (ordersRes.ok) {
           const ordersData = await ordersRes.json();
