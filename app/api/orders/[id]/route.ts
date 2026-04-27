@@ -51,17 +51,23 @@ export async function GET(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    const itemsResult = await pool.query(
-      `SELECT
-        oi.title_snapshot,
-        oi.price_snapshot,
-        oi.quantity,
-        oi.subtotal,
-        oi.listing_id
-       FROM order_items oi
-       WHERE oi.order_id = $1`,
-      [orderId]
-    );
+  const itemsResult = await pool.query(
+  `SELECT
+    oi.title_snapshot,
+    oi.price_snapshot,
+    oi.quantity,
+    oi.subtotal,
+    oi.listing_id,
+    (
+      SELECT li.image_url
+      FROM listing_images li
+      WHERE li.listing_id = oi.listing_id AND li.is_primary = TRUE
+      LIMIT 1
+    ) AS primary_image
+   FROM order_items oi
+   WHERE oi.order_id = $1`,
+  [orderId]
+);
 
     return NextResponse.json({
       order: {
