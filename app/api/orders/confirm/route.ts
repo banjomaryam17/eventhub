@@ -83,8 +83,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, orderId });
     } catch (err) {
       await client.query("ROLLBACK");
+      console.error("Order creation failed:", JSON.stringify(err, null, 2));
       throw err;
-    } finally {
+    }finally {
       client.release();
     }
   } catch (err) {
