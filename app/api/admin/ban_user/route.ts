@@ -1,39 +1,35 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
+import { requireAdmin } from "@/lib/session";
 import { pool } from "@/lib/db";
 
 export async function PATCH(req: Request) {
   try {
-    const session = await getSession();
+    const admin = await requireAdmin();
 
-    // Must be logged in
-    if (!session) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
+    const { userId, banned } = await req.json();
 
-    // Must be admin
-    if (session.role !== "admin") {
-      return NextResponse.json({ error: "Admins only" }, { status: 403 });
-    }
-
-    const body = await req.json();
-    const { userId } = body;
-
-    if (!userId) {
+    if (!userId || isNaN(parseInt(userId))) {
       return NextResponse.json(
-        { error: "User ID is required" },
+        { error: "Valid user ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const targetUserId = parseInt(userId);
+
+    if (admin.userId === targetUserId && banned === true) {
+      return NextResponse.json(
+        { error: "You cannot ban your own account" },
         { status: 400 }
       );
     }
 
     const result = await pool.query(
-      `
-      UPDATE users
-      SET is_banned = TRUE
-      WHERE id = $1
-      RETURNING id, username, email, is_banned
-      `,
-      [userId]
+      `UPDATE users
+       SET is_banned = $1
+       WHERE id = $2
+       RETURNING id, username, email, role, is_banned`,
+      [Boolean(banned), targetUserId]
     );
 
     if (result.rows.length === 0) {
@@ -44,13 +40,11 @@ export async function PATCH(req: Request) {
     }
 
     return NextResponse.json({
-      message: "User banned successfully",
+      message: banned ? "User banned successfully" : "User unbanned successfully",
       user: result.rows[0],
     });
-
   } catch (error) {
     console.error("Ban user error:", error);
-
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
