@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import ConfirmModal from "./ConfirmModal";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface SessionUser {
   userId: number;

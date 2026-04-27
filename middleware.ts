@@ -4,14 +4,23 @@ import { jwtVerify } from "jose";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
 
-const PROTECTED = ["/dashboard", "/checkout", "/orders", "/sell", "/profile","/cart"];
+const PROTECTED = [
+  "/dashboard",
+  "/checkout",
+  "/orders",
+  "/sell",
+  "/profile",
+  "/cart",
+  "/wishlist",
+];
+
 const ADMIN_ONLY = ["/admin"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isProtected = PROTECTED.some(p => pathname.startsWith(p));
-  const isAdminOnly = ADMIN_ONLY.some(p => pathname.startsWith(p));
+  const isProtected = PROTECTED.some((p) => pathname.startsWith(p));
+  const isAdminOnly = ADMIN_ONLY.some((p) => pathname.startsWith(p));
 
   if (!isProtected && !isAdminOnly) {
     return NextResponse.next();
@@ -31,7 +40,6 @@ export async function middleware(request: NextRequest) {
     }
 
     return NextResponse.next();
-
   } catch {
     const response = NextResponse.redirect(new URL("/auth/login", request.url));
     response.cookies.delete("session");
@@ -47,5 +55,7 @@ export const config = {
     "/orders/:path*",
     "/sell/:path*",
     "/profile/:path*",
+    "/cart/:path*",
+    "/wishlist/:path*",
   ],
 };
