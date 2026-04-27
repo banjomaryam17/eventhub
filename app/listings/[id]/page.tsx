@@ -65,6 +65,9 @@ export default function ListingDetailPage() {
   const [reviewText, setReviewText] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewError, setReviewError] = useState("");
+  const [inWishlist, setInWishlist] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [wishlistMessage, setWishlistMessage] = useState("");
 
   // Fetch session and listing in parallel
   useEffect(() => {
@@ -87,6 +90,12 @@ export default function ListingDetailPage() {
           const sessionData = await sessionRes.json();
           if (sessionData?.user) setUser(sessionData.user);
         }
+
+        const wishlistRes = await fetch(`/api/wishlist/${listingId}`);
+        if (wishlistRes.ok) {
+          const wishlistData = await wishlistRes.json();
+          setInWishlist(wishlistData.in_wishlist);
+}
       } catch (err) {
         console.error(err);
       } finally {
@@ -125,6 +134,41 @@ export default function ListingDetailPage() {
       setCartError("Failed to add to cart");
     } finally {
       setAddingToCart(false);
+    }
+  }
+
+  async function handleWishlistToggle() {
+    if (!user) {
+      router.push("/auth/login");
+      return;
+    }
+  
+    setWishlistLoading(true);
+    setWishlistMessage("");
+  
+    try {
+      const res = await fetch(
+        inWishlist ? `/api/wishlist/${listingId}` : "/api/wishlist",
+        {
+          method: inWishlist ? "DELETE" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: inWishlist ? undefined : JSON.stringify({ listing_id: listingId }),
+        }
+      );
+  
+      const data = await res.json();
+  
+      if (!res.ok) {
+        setWishlistMessage(data.error ?? "Wishlist update failed");
+        return;
+      }
+  
+      setInWishlist((prev) => !prev);
+      setWishlistMessage(inWishlist ? "Removed from wishlist" : "Added to wishlist");
+    } catch {
+      setWishlistMessage("Wishlist update failed");
+    } finally {
+      setWishlistLoading(false);
     }
   }
 
@@ -335,6 +379,26 @@ export default function ListingDetailPage() {
               >
                 {addingToCart ? "Adding..." : "Add to cart"}
               </Button>
+
+              <Button
+                onClick={handleWishlistToggle}
+                disabled={wishlistLoading}
+                variant="secondary"
+                size="lg"
+                fullWidth
+              >
+                {wishlistLoading
+                  ? "Updating..."
+                  : inWishlist
+                    ? "♥ Remove from wishlist"
+                    : "♡ Add to wishlist"}
+              </Button>
+
+{wishlistMessage && (
+  <p className="text-slate-400 text-sm text-center">{wishlistMessage}</p>
+)}
+
+              
 
               {cartMessage && (
                 <p className="text-emerald-400 text-sm text-center">{cartMessage}</p>
