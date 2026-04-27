@@ -74,3 +74,47 @@ body {
   color: #0f172a !important;
   border-color: #cbd5e1 !important;
 }
+
+.light-mode nav {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-color: #cbd5e1 !important;
+}
+
+.light-mode nav span,
+.light-mode nav a,
+.light-mode nav button {
+  color: #0f172a !important;
+}
+
+.light-mode nav a:hover,
+.light-mode nav button:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.light-mode nav .text-indigo-400 {
+  color: #4f46e5 !important;
+}
+
+.light-mode nav .text-amber-400 {
+  color: #d97706 !important;
+}
+
+.light-mode nav .bg-indigo-600 {
+  background-color: #4f46e5 !important;
+  color: white !important;
+}
+
+.light-mode nav .border-slate-700,
+.light-mode nav .border-slate-800,
+.light-mode nav .border-slate-800\/60 {
+  border-color: #cbd5e1 !important;
+}
+
+.light-mode nav .bg-indigo-600\/20 {
+  background-color: #eef2ff !important;
+}
+
+.light-mode nav .border-indigo-500\/30 {
+  border-color: #a5b4fc !important;
+}
