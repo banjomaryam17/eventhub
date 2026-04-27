@@ -10,6 +10,70 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   cancelled: [],
   refunded: [],
 };
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const orderId = parseInt(id);
+    if (isNaN(orderId)) {
+      return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
+    }
+
+    const orderResult = await pool.query(
+      `SELECT
+        o.id,
+        o.status,
+        o.total_price,
+        o.item_cost,
+        o.shipping_cost,
+        o.created_at,
+        sa.full_name,
+        sa.address_line1,
+        sa.address_line2,
+        sa.city,
+        sa.state,
+        sa.postal_code,
+        sa.country
+       FROM orders o
+       LEFT JOIN shipping_addresses sa ON sa.id = o.shipping_address_id
+       WHERE o.id = $1 AND o.buyer_id = $2`,
+      [orderId, session.userId]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    const itemsResult = await pool.query(
+      `SELECT
+        oi.title_snapshot,
+        oi.price_snapshot,
+        oi.quantity,
+        oi.subtotal,
+        oi.listing_id
+       FROM order_items oi
+       WHERE oi.order_id = $1`,
+      [orderId]
+    );
+
+    return NextResponse.json({
+      order: {
+        ...orderResult.rows[0],
+        items: itemsResult.rows,
+      },
+    });
+  } catch (err) {
+    console.error("GET /api/orders/[id] error:", err);
+    return NextResponse.json({ error: "Failed to fetch order" }, { status: 500 });
+  }
+}
 
 export async function PATCH(
   req: Request,
