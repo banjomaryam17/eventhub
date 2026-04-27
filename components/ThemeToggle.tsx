@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
@@ -17,8 +16,6 @@ export default function ThemeToggle() {
       setTheme("dark");
       localStorage.setItem("theme", "dark");
     }
-
-    setMounted(true);
   }, []);
 
   function toggleTheme() {
@@ -34,16 +31,12 @@ export default function ThemeToggle() {
     }
   }
 
-  if (!mounted) return null;
-
   return (
     <button
       onClick={toggleTheme}
-      className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-700 bg-slate-900 text-sm hover:bg-slate-800 transition-colors"
-      aria-label="Toggle theme"
-      title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      className="fixed bottom-5 right-5 z-50 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white shadow-lg hover:bg-slate-800 transition-colors"
     >
-      {theme === "dark" ? "☀️" : "🌙"}
+      {theme === "dark" ? "Light" : "Dark"}
     </button>
   );
 }
