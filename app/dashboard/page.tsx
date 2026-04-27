@@ -1,12 +1,18 @@
 "use client";
-export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PageLayout from "@/components/PageLayout";
 import ConfirmModal from "@/components/ConfirmModal";
-
-import { Card, Button, Badge, ConditionBadge, LoadingSpinner, EmptyState } from "@/components/ui";
+import {
+  Card,
+  Button,
+  Badge,
+  ConditionBadge,
+  LoadingSpinner,
+  EmptyState,
+} from "@/components/ui";
 
 interface Listing {
   id: number;
@@ -26,6 +32,8 @@ interface SellerOrder {
   order_id: number;
   status: string;
   created_at: string;
+  shipping_cost: string;
+  total_price: string;
   quantity: number;
   price_snapshot: string;
   title_snapshot: string;
@@ -35,7 +43,9 @@ interface SellerOrder {
   buyer_email: string;
   full_name: string | null;
   address_line1: string | null;
+  address_line2: string | null;
   city: string | null;
+  state: string | null;
   postal_code: string | null;
   country: string | null;
 }
@@ -57,65 +67,85 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function SellerDashboardPage() {
   const router = useRouter();
+
   const [user, setUser]               = useState<SessionUser | null>(null);
   const [listings, setListings]       = useState<Listing[]>([]);
   const [orders, setOrders]           = useState<SellerOrder[]>([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState("");
   const [deleting, setDeleting]       = useState<number | null>(null);
+  const [updatingOrder, setUpdatingOrder] = useState<number | null>(null);
   const [activeTab, setActiveTab]     = useState<"listings" | "sales">("listings");
-  const [modal, setModal] = useState<any>(null);
+  const [modal, setModal]             = useState<any>(null);
+
+  async function fetchDashboardData() {
+    try {
+      const sessionRes = await fetch("/api/auth/session");
+      if (!sessionRes.ok) { router.push("/auth/login"); return; }
+      const sessionData = await sessionRes.json();
+      setUser(sessionData.user);
+
+      const [listingsRes, ordersRes] = await Promise.all([
+        fetch("/api/seller/listings"),
+        fetch("/api/seller/orders"),
+      ]);
+
+      const listingsData = await listingsRes.json();
+      setListings(listingsData.listings ?? []);
+
+      if (ordersRes.ok) {
+        const ordersData = await ordersRes.json();
+        setOrders(ordersData.orders);
+      }
+    } catch {
+      setError("Failed to load dashboard");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const sessionRes = await fetch("/api/auth/session");
-        if (!sessionRes.ok) { router.push("/auth/login"); return; }
-        const sessionData = await sessionRes.json();
-        setUser(sessionData.user);
-
-        // Fetch listings and seller orders in parallel
-        const [listingsRes, ordersRes] = await Promise.all([
-  fetch("/api/seller/listings"),
-  fetch("/api/seller/orders"),
-]);
-
-const listingsData = await listingsRes.json();
-setListings(listingsData.listings ?? []);
-
-        if (ordersRes.ok) {
-          const ordersData = await ordersRes.json();
-          setOrders(ordersData.orders);
-        }
-      } catch {
-        setError("Failed to load dashboard");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
+    fetchDashboardData();
   }, []);
 
   function handleDelete(listingId: number) {
-  setModal({
-    title: "Remove listing",
-    message: "Are you sure you want to remove this listing? This cannot be undone.",
-    confirmLabel: "Remove",
-    variant: "danger",
-    onConfirm: () => actuallyDelete(listingId),
-  });
-}
+    setModal({
+      title: "Remove listing",
+      message: "Are you sure you want to remove this listing? This cannot be undone.",
+      confirmLabel: "Remove",
+      variant: "danger",
+      onConfirm: () => actuallyDelete(listingId),
+    });
+  }
 
-async function actuallyDelete(listingId: number) {
-  setDeleting(listingId);
-  const res = await fetch(`/api/listings/${listingId}`, { method: "DELETE" });
-  if (res.ok) setListings((prev) => prev.filter((l) => l.id !== listingId));
-  setDeleting(null);
-}
+  async function actuallyDelete(listingId: number) {
+    setDeleting(listingId);
+    const res = await fetch(`/api/listings/${listingId}`, { method: "DELETE" });
+    if (res.ok) setListings((prev) => prev.filter((l) => l.id !== listingId));
+    setDeleting(null);
+  }
 
-  const activeListings   = listings.filter((l) => l.is_active);
-  const inactiveListings = listings.filter((l) => !l.is_active);
-  const totalEarnings    = orders.reduce((sum, o) => sum + parseFloat(o.subtotal), 0);
+  async function updateOrderStatus(orderId: number, status: string) {
+    setUpdatingOrder(orderId);
+    setError("");
+    try {
+      const res = await fetch(`/api/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Failed to update order"); return; }
+      await fetchDashboardData();
+    } catch {
+      setError("Failed to update order");
+    } finally {
+      setUpdatingOrder(null);
+    }
+  }
+
+  const activeListings = listings.filter((l) => l.is_active);
+  const totalEarnings  = orders.reduce((sum, o) => sum + parseFloat(o.subtotal), 0);
 
   return (
     <PageLayout
@@ -123,6 +153,7 @@ async function actuallyDelete(listingId: number) {
       subtitle={user ? `Welcome back, ${user.username}` : ""}
     >
       {loading && <LoadingSpinner message="Loading your dashboard..." />}
+
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm mb-6">
           {error}
@@ -131,7 +162,6 @@ async function actuallyDelete(listingId: number) {
 
       {!loading && (
         <>
-          {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
             <Card padding="sm" className="text-center">
               <p className="text-2xl font-bold text-white">{listings.length}</p>
@@ -143,7 +173,7 @@ async function actuallyDelete(listingId: number) {
             </Card>
             <Card padding="sm" className="text-center">
               <p className="text-2xl font-bold text-indigo-400">{orders.length}</p>
-              <p className="text-xs text-slate-500 mt-1">Total sales</p>
+              <p className="text-xs text-slate-500 mt-1">Orders</p>
             </Card>
             <Card padding="sm" className="text-center">
               <p className="text-2xl font-bold text-amber-400">€{totalEarnings.toFixed(0)}</p>
@@ -151,7 +181,6 @@ async function actuallyDelete(listingId: number) {
             </Card>
           </div>
 
-          {/* Tabs */}
           <div className="flex items-center gap-1 mb-6 border-b border-slate-800">
             <button
               onClick={() => setActiveTab("listings")}
@@ -175,7 +204,6 @@ async function actuallyDelete(listingId: number) {
             </button>
           </div>
 
-          {/* ── Listings Tab  */}
           {activeTab === "listings" && (
             <>
               <div className="flex items-center justify-between mb-4">
@@ -246,7 +274,6 @@ async function actuallyDelete(listingId: number) {
             </>
           )}
 
-          {/*Sales Tab*/}
           {activeTab === "sales" && (
             <>
               {orders.length === 0 ? (
@@ -262,35 +289,47 @@ async function actuallyDelete(listingId: number) {
                       <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-white">
-                              Order #{order.order_id}
-                            </span>
+                            <span className="text-sm font-semibold text-white">Order #{order.order_id}</span>
                             <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${STATUS_COLORS[order.status] ?? "bg-slate-700 text-slate-300"}`}>
                               {order.status}
                             </span>
                           </div>
                           <p className="text-sm text-white mt-1">{order.title_snapshot}</p>
-                          <p className="text-xs text-slate-500">
-                            Qty: {order.quantity} · €{parseFloat(order.subtotal).toFixed(2)}
-                          </p>
+                          <p className="text-xs text-slate-500">Qty: {order.quantity} · €{parseFloat(order.subtotal).toFixed(2)}</p>
                           <div className="mt-2 p-3 bg-slate-800/60 rounded-xl">
                             <p className="text-xs font-medium text-slate-300 mb-1">Buyer details</p>
                             <p className="text-xs text-slate-400">@{order.buyer_username} — {order.buyer_email}</p>
-                            {order.full_name && (
+                            {order.full_name ? (
                               <p className="text-xs text-slate-400 mt-1">
-                                📦 {order.full_name}, {order.address_line1}, {order.city}, {order.postal_code}, {order.country}
+                                📦 {order.full_name}, {order.address_line1}
+                                {order.address_line2 ? `, ${order.address_line2}` : ""},{" "}
+                                {order.city}, {order.state}, {order.postal_code}, {order.country}
                               </p>
-                            )}
-                            {!order.full_name && (
+                            ) : (
                               <p className="text-xs text-slate-500 mt-1">No shipping address provided</p>
+                            )}
+                          </div>
+                          <div className="flex gap-2 mt-3">
+                            {order.status === "pending" && (
+                              <Button size="sm" onClick={() => updateOrderStatus(order.order_id, "processing")} disabled={updatingOrder === order.order_id}>
+                                {updatingOrder === order.order_id ? "Accepting..." : "Accept order"}
+                              </Button>
+                            )}
+                            {order.status === "processing" && (
+                              <Button size="sm" onClick={() => updateOrderStatus(order.order_id, "shipped")} disabled={updatingOrder === order.order_id}>
+                                {updatingOrder === order.order_id ? "Updating..." : "Mark shipped"}
+                              </Button>
+                            )}
+                            {order.status === "shipped" && (
+                              <Button size="sm" variant="secondary" onClick={() => updateOrderStatus(order.order_id, "delivered")} disabled={updatingOrder === order.order_id}>
+                                {updatingOrder === order.order_id ? "Updating..." : "Mark delivered"}
+                              </Button>
                             )}
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-white">€{parseFloat(order.subtotal).toFixed(2)}</p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {new Date(order.created_at).toLocaleDateString("en-IE")}
-                          </p>
+                          <p className="text-xs text-slate-500 mt-1">{new Date(order.created_at).toLocaleDateString("en-IE")}</p>
                         </div>
                       </div>
                     </Card>
