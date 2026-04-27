@@ -8,7 +8,6 @@ export async function PUT(
 ) {
   try {
     const session = await requireAdmin();
-    if (session instanceof NextResponse) return session;
 
     const p = await params;
     const targetUserId = parseInt(p.id);
@@ -24,38 +23,36 @@ export async function PUT(
       );
     }
 
-    const body = await req.json();
-    const { role } = body;
+    const { role } = await req.json();
 
-    const validRoles = ["user", "admin"];
-    if (!role || !validRoles.includes(role)) {
+    if (!role || !["user", "admin"].includes(role)) {
       return NextResponse.json(
         { error: "Role must be user or admin" },
         { status: 400 }
       );
     }
 
-    const existing = await pool.query(
-      "SELECT id, username FROM users WHERE id = $1",
-      [targetUserId]
-    );
-
-    if (existing.rows.length === 0) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
     const result = await pool.query(
-      "UPDATE users SET role = $1 WHERE id = $2 RETURNING id, username, role",
+      `UPDATE users
+       SET role = $1
+       WHERE id = $2
+       RETURNING id, username, email, role, is_banned`,
       [role, targetUserId]
     );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
 
     return NextResponse.json({
       message: `User ${result.rows[0].username} role updated to ${role}`,
       user: result.rows[0],
     });
-
   } catch (err) {
     console.error("PUT /api/admin/users/[id] error:", err);
-    return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update user" },
+      { status: 500 }
+    );
   }
 }
