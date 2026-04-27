@@ -2,14 +2,15 @@
 
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface PageLayoutProps {
   children: React.ReactNode;
-  title?: string;          
-  subtitle?: string;       
-  showBack?: boolean;      
-  backHref?: string;       
-  fullWidth?: boolean;   
+  title?: string;
+  subtitle?: string;
+  showBack?: boolean;
+  backHref?: string;
+  fullWidth?: boolean;
 }
 
 export default function PageLayout({
@@ -23,9 +24,9 @@ export default function PageLayout({
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
       <Navbar />
+      <ThemeToggle />
 
       <main className="flex-1">
-        {/* Page header — only renders if title is provided */}
         {title && (
           <div className="border-b border-slate-800/60">
             <div className={`mx-auto px-4 sm:px-6 lg:px-8 py-6 ${fullWidth ? "max-w-full" : "max-w-7xl"}`}>
@@ -41,19 +42,18 @@ export default function PageLayout({
                   Back
                 </Link>
               )}
+
               <h1 className="text-2xl font-bold text-white">{title}</h1>
               {subtitle && <p className="text-slate-400 text-sm mt-1">{subtitle}</p>}
             </div>
           </div>
         )}
 
-        {/* Page content */}
         <div className={`mx-auto px-4 sm:px-6 lg:px-8 py-8 ${fullWidth ? "max-w-full" : "max-w-7xl"}`}>
           {children}
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-slate-800/60 py-6 mt-auto">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between flex-wrap gap-4">
           <p className="text-xs text-slate-600">© 2026 Haul.co. All rights reserved.</p>

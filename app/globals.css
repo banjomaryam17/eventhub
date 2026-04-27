@@ -24,3 +24,53 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.light-mode body {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.light-mode .bg-slate-950 {
+  background-color: #f8fafc !important;
+}
+
+.light-mode .bg-slate-900 {
+  background-color: #ffffff !important;
+}
+
+.light-mode .bg-slate-800,
+.light-mode .bg-slate-800\/40,
+.light-mode .bg-slate-800\/60 {
+  background-color: #f1f5f9 !important;
+}
+
+.light-mode .border-slate-800,
+.light-mode .border-slate-800\/60,
+.light-mode .border-slate-700 {
+  border-color: #cbd5e1 !important;
+}
+
+.light-mode .text-white {
+  color: #0f172a !important;
+}
+
+.light-mode .text-slate-300,
+.light-mode .text-slate-400,
+.light-mode .text-slate-500,
+.light-mode .text-slate-600 {
+  color: #475569 !important;
+}
+
+.light-mode input,
+.light-mode textarea,
+.light-mode select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.light-mode button.fixed {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
