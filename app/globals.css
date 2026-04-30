@@ -118,3 +118,36 @@ body {
 .light-mode nav .border-indigo-500\/30 {
   border-color: #a5b4fc !important;
 }
+/* Indigo buttons everywhere in light mode */
+.light-mode .bg-indigo-600 {
+  background-color: #4f46e5 !important;
+  color: white !important;
+}
+
+.light-mode .hover\:bg-indigo-500:hover {
+  background-color: #6366f1 !important;
+}
+
+/* Logo icon */
+.light-mode .bg-indigo-600 svg {
+  color: white !important;
+}
+
+/* Hero and section backgrounds */
+.light-mode main {
+  background-color: #f8fafc;
+}
+
+.light-mode section {
+  background-color: #f8fafc;
+}
+
+/* Cards in light mode */
+.light-mode .bg-slate-900.border {
+  background-color: #ffffff !important;
+}
+
+/* Gradient sections */
+.light-mode .from-indigo-600\/20 {
+  --tw-gradient-from: rgba(79, 70, 229, 0.15);
+}
