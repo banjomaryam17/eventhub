@@ -126,7 +126,12 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [creatingPayment, setCreatingPayment] = useState(false);
   const [error, setError] = useState("");
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
+useEffect(() => {
+  const saved = localStorage.getItem("theme");
+  if (saved === "light") setTheme("light");
+}, []);
   async function fetchAddresses() {
     const res = await fetch("/api/me/addresses");
 
@@ -247,20 +252,20 @@ export default function CheckoutPage() {
     initCheckout();
   }, [router]);
 
-  const stripeOptions = {
-    clientSecret: clientSecret ?? "",
-    appearance: {
-      theme: "night" as const,
-      variables: {
-        colorPrimary: "#6366f1",
-        colorBackground: "#1e293b",
-        colorText: "#f1f5f9",
-        colorDanger: "#ef4444",
-        borderRadius: "12px",
-        fontFamily: "inherit",
-      },
+ const stripeOptions = {
+  clientSecret: clientSecret ?? "",
+  appearance: {
+    theme: theme === "light" ? "stripe" as const : "night" as const,
+    variables: {
+      colorPrimary: "#6366f1",
+      colorBackground: theme === "light" ? "#ffffff" : "#1e293b",
+      colorText: theme === "light" ? "#0f172a" : "#f1f5f9",
+      colorDanger: "#ef4444",
+      borderRadius: "12px",
+      fontFamily: "inherit",
     },
-  };
+  },
+};
 
   return (
     <PageLayout
