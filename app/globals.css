@@ -89,7 +89,7 @@ body {
 .light-mode nav a:hover,
 .light-mode nav button:hover {
   background-color: #e2e8f0 !important;
-  color: #0f172a !important;
+  color: #ffffff !important;
 }
 
 .light-mode nav .text-indigo-400 {
@@ -127,7 +127,6 @@ body {
 .light-mode .hover\:bg-indigo-500:hover {
   background-color: #6366f1 !important;
 }
-
 /* Logo icon */
 .light-mode .bg-indigo-600 svg {
   color: white !important;
@@ -173,7 +172,7 @@ body {
 }
 .light-mode .hover\:bg-slate-800:hover {
   background-color: #e2e8f0 !important;
-  
+
 }
 
 .light-mode .hover\:bg-slate-800\/40:hover {
