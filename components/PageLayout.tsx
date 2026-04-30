@@ -2,7 +2,6 @@
 
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
-import ThemeToggle from "@/components/ThemeToggle";
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -24,7 +23,6 @@ export default function PageLayout({
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
       <Navbar />
-      <ThemeToggle />
 
       <main className="flex-1">
         {title && (

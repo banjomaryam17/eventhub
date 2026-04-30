@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import ConfirmModal from "./ConfirmModal";
-
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface SessionUser {
   userId: number;
@@ -101,6 +101,7 @@ async function actuallyLogout() {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
+                   <ThemeToggle />
               {!loading && (
                 <>
                 
