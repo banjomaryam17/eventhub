@@ -67,37 +67,35 @@ export default function OrderPage() {
         {/* Items */}
         <div>
           <h2 className="text-lg font-semibold text-white mb-4">Items</h2>
-          
           <div className="flex flex-col gap-3">
-            
             {order.items.map((item: any) => (
-  <Card key={item.id} padding="sm">
-    <div className="flex gap-4">
-      <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden flex-shrink-0">
-        {item.primary_image ? (
-          <img src={item.primary_image} alt={item.title_snapshot} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-2xl opacity-20">🛍</span>
-          </div>
-        )}
-      </div>
-      <div>
-        <Link href={`/listings/${item.listing_id}`}>
-          <p className="text-sm font-medium text-white hover:text-indigo-400 transition-colors line-clamp-2">
-            {item.title_snapshot}
-          </p>
-        </Link>
-        <p className="text-xs text-slate-400 mt-1">
-          €{parseFloat(item.price_snapshot).toFixed(2)} × {item.quantity}
-        </p>
-        <p className="text-sm font-semibold text-white mt-1">
-          €{(parseFloat(item.price_snapshot) * item.quantity).toFixed(2)}
-        </p>
-      </div>
-    </div>
-  </Card>
-))}
+              <Link href={`/listings/${item.listing_id}`} key={item.id}>
+                <Card padding="sm" className="cursor-pointer hover:border-indigo-500 transition-colors">
+                  <div className="flex gap-4">
+                    <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden flex-shrink-0">
+                      {item.primary_image ? (
+                        <img src={item.primary_image} alt={item.title_snapshot} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-2xl opacity-20">🛍</span>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white hover:text-indigo-400 transition-colors line-clamp-2">
+                        {item.title_snapshot}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        €{parseFloat(item.price_snapshot).toFixed(2)} × {item.quantity}
+                      </p>
+                      <p className="text-sm font-semibold text-white mt-1">
+                        €{(parseFloat(item.price_snapshot) * item.quantity).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </Link>
+            ))}
           </div>
         </div>
 
