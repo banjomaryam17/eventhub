@@ -88,7 +88,11 @@ export default function WishlistPage() {
 
       {items.length === 0 ? (
         <EmptyState
-          icon="♡"
+          icon={
+  <svg className="w-12 h-12 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+  </svg>
+}
           title="Your wishlist is empty"
           description="Save listings you like and come back to them later"
           action={{ label: "Browse listings", href: "/listings" }}

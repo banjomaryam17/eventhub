@@ -107,6 +107,12 @@ async function actuallyLogout() {
                 
                   {user ? (
                     <>
+                    {/* Wishlist */}
+<Link href="/wishlist" className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors">
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+  </svg>
+</Link>
                       {/* Cart with badge */}
                       <Link href="/cart" className="relative text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,6 +184,9 @@ async function actuallyLogout() {
               </Link>
               <Link href="/orders" onClick={() => setMenuOpen(false)} className="text-slate-400 hover:text-white text-sm px-3 py-2 rounded-xl hover:bg-slate-800 transition-colors">
                 Orders
+              </Link>
+              <Link href="/wishlist" onClick={() => setMenuOpen(false)} className="text-slate-400 hover:text-white text-sm px-3 py-2 rounded-xl hover:bg-slate-800 transition-colors">
+                 Wishlist
               </Link>
               <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="text-slate-400 hover:text-white text-sm px-3 py-2 rounded-xl hover:bg-slate-800 transition-colors">
                 Dashboard

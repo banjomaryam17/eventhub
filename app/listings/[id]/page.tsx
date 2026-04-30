@@ -273,7 +273,7 @@ export default function ListingDetailPage() {
           )}
         </div>
 
-        {/* ── Details ──────────────────────────────────────── */}
+        {/* Details */}
         <div className="flex flex-col gap-5">
           {/* Category + condition */}
           <div className="flex items-center gap-2 flex-wrap">
@@ -381,18 +381,30 @@ export default function ListingDetailPage() {
               </Button>
 
               <Button
-                onClick={handleWishlistToggle}
-                disabled={wishlistLoading}
-                variant="secondary"
-                size="lg"
-                fullWidth
-              >
-                {wishlistLoading
-                  ? "Updating..."
-                  : inWishlist
-                    ? "♥ Remove from wishlist"
-                    : "♡ Add to wishlist"}
-              </Button>
+  onClick={handleWishlistToggle}
+  disabled={wishlistLoading}
+  variant="secondary"
+  size="lg"
+  fullWidth
+>
+  {wishlistLoading ? (
+    "Updating..."
+  ) : inWishlist ? (
+    <span className="flex items-center justify-center gap-2">
+      <svg className="w-4 h-4 text-red-400 fill-red-400" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      </svg>
+      Remove from wishlist
+    </span>
+  ) : (
+    <span className="flex items-center justify-center gap-2">
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      </svg>
+      Add to wishlist
+    </span>
+  )}
+</Button>
 
 {wishlistMessage && (
   <p className="text-slate-400 text-sm text-center">{wishlistMessage}</p>
