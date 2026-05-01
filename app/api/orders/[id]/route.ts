@@ -10,6 +10,7 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   cancelled: [],
   refunded: [],
 };
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -51,23 +52,23 @@ export async function GET(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-  const itemsResult = await pool.query(
-  `SELECT
-    oi.title_snapshot,
-    oi.price_snapshot,
-    oi.quantity,
-    oi.subtotal,
-    oi.listing_id,
-    (
-      SELECT li.image_url
-      FROM listing_images li
-      WHERE li.listing_id = oi.listing_id AND li.is_primary = TRUE
-      LIMIT 1
-    ) AS primary_image
-   FROM order_items oi
-   WHERE oi.order_id = $1`,
-  [orderId]
-);
+    const itemsResult = await pool.query(
+      `SELECT
+        oi.title_snapshot,
+        oi.price_snapshot,
+        oi.quantity,
+        oi.subtotal,
+        oi.listing_id,
+        (
+          SELECT li.image_url
+          FROM listing_images li
+          WHERE li.listing_id = oi.listing_id AND li.is_primary = TRUE
+          LIMIT 1
+        ) AS primary_image
+       FROM order_items oi
+       WHERE oi.order_id = $1`,
+      [orderId]
+    );
 
     return NextResponse.json({
       order: {
@@ -105,10 +106,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Status is required" }, { status: 400 });
     }
 
+    // Fetch order with buyer_id
     const orderResult = await pool.query(
-      `SELECT id, status
-       FROM orders
-       WHERE id = $1`,
+      `SELECT id, status, buyer_id FROM orders WHERE id = $1`,
       [orderId]
     );
 
@@ -117,6 +117,7 @@ export async function PATCH(
     }
 
     const currentStatus = orderResult.rows[0].status;
+    const buyerId = orderResult.rows[0].buyer_id;
 
     if (!ALLOWED_TRANSITIONS[currentStatus]?.includes(status)) {
       return NextResponse.json(
@@ -126,17 +127,24 @@ export async function PATCH(
     }
 
     const sellerCheck = await pool.query(
-      `SELECT 1
-       FROM order_items
-       WHERE order_id = $1 AND seller_id = $2
-       LIMIT 1`,
+      `SELECT 1 FROM order_items WHERE order_id = $1 AND seller_id = $2 LIMIT 1`,
       [orderId, session.userId]
     );
 
+    const isBuyer = buyerId === session.userId;
     const isSellerForOrder = sellerCheck.rows.length > 0;
     const isAdmin = session.role === "admin";
 
-    if (!isSellerForOrder && !isAdmin) {
+    // Buyers can only confirm delivery
+    if (isBuyer && !isSellerForOrder && status !== "delivered") {
+      return NextResponse.json(
+        { error: "Buyers can only confirm delivery" },
+        { status: 403 }
+      );
+    }
+
+    // Must be buyer, seller or admin
+    if (!isBuyer && !isSellerForOrder && !isAdmin) {
       return NextResponse.json(
         { error: "You do not have permission to update this order" },
         { status: 403 }
@@ -145,8 +153,7 @@ export async function PATCH(
 
     const updateResult = await pool.query(
       `UPDATE orders
-       SET status = $1,
-           updated_at = CURRENT_TIMESTAMP
+       SET status = $1, updated_at = CURRENT_TIMESTAMP
        WHERE id = $2
        RETURNING id, status, updated_at`,
       [status, orderId]
@@ -157,7 +164,7 @@ export async function PATCH(
       order: updateResult.rows[0],
     });
   } catch (err) {
-    console.error("PATCH /api/orders/[id]/status error:", err);
+    console.error("PATCH /api/orders/[id] error:", err);
     return NextResponse.json(
       { error: "Failed to update order status" },
       { status: 500 }
