@@ -129,7 +129,7 @@ export default function SellerDashboardPage() {
     setUpdatingOrder(orderId);
     setError("");
     try {
-      const res = await fetch(`/api/orders/${orderId}/status`, {
+      const res = await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),

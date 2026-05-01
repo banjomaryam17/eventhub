@@ -9,6 +9,16 @@ export async function GET() {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    // Auto-deliver shipped orders older than 6 days
+    await pool.query(
+      `UPDATE orders
+       SET status = 'delivered', updated_at = CURRENT_TIMESTAMP
+       WHERE buyer_id = $1
+         AND status = 'shipped'
+         AND created_at < NOW() - INTERVAL '6 days'`,
+      [session.userId]
+    );
+
     const result = await pool.query(
       `SELECT
         o.id,
