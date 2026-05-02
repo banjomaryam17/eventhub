@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PageLayout from "@/components/PageLayout";
@@ -99,49 +99,67 @@ function BrowseListingsPageInner() {
   const [maxPrice, setMaxPrice]   = useState(searchParams.get("maxPrice") ?? "");
   const [sortBy, setSortBy]       = useState(searchParams.get("sortBy") ?? "newest");
   const [page, setPage]           = useState(parseInt(searchParams.get("page") ?? "1"));
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [listings, setListings]     = useState<Listing[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState("");
 
-  const buildQuery = useCallback(() => {
-    const params = new URLSearchParams();
-    if (search)    params.set("search", search);
-    if (category)  params.set("category", category);
-    if (condition) params.set("condition", condition);
-    if (minPrice)  params.set("minPrice", minPrice);
-    if (maxPrice)  params.set("maxPrice", maxPrice);
-    if (sortBy)    params.set("sortBy", sortBy);
-    if (page > 1)  params.set("page", page.toString());
-    return params.toString();
+  // Debounce ref for live search
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchListings = useCallback(async (overrides?: Record<string, string>) => {
+    setLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams();
+      const s         = overrides?.search    ?? search;
+      const cat       = overrides?.category  ?? category;
+      const cond      = overrides?.condition ?? condition;
+      const min       = overrides?.minPrice  ?? minPrice;
+      const max       = overrides?.maxPrice  ?? maxPrice;
+      const sort      = overrides?.sortBy    ?? sortBy;
+      const pg        = overrides?.page      ?? page.toString();
+
+      if (s)         params.set("search", s);
+      if (cat)       params.set("category", cat);
+      if (cond)      params.set("condition", cond);
+      if (min)       params.set("minPrice", min);
+      if (max)       params.set("maxPrice", max);
+      if (sort)      params.set("sortBy", sort);
+      if (parseInt(pg) > 1) params.set("page", pg);
+
+      const res = await fetch(`/api/listings?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setListings(data.listings);
+      setPagination(data.pagination);
+      router.replace(`/listings?${params.toString()}`, { scroll: false });
+    } catch (err: any) {
+      setError(err.message ?? "Failed to load listings");
+    } finally {
+      setLoading(false);
+    }
   }, [search, category, condition, minPrice, maxPrice, sortBy, page]);
 
+  // Initial load + filter changes (except search which is debounced)
   useEffect(() => {
-    const fetchListings = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const query = buildQuery();
-        const res = await fetch(`/api/listings?${query}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        setListings(data.listings);
-        setPagination(data.pagination);
-        router.replace(`/listings?${query}`, { scroll: false });
-      } catch (err: any) {
-        setError(err.message ?? "Failed to load listings");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchListings();
-  }, [buildQuery]);
+  }, [category, condition, minPrice, maxPrice, sortBy, page]);
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    setPage(1);
-  }
+  // Live search with debounce
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchListings({ search });
+      // Collapse filters on mobile after search
+      setFiltersOpen(false);
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [search]);
 
   function clearFilters() {
     setSearch("");
@@ -151,41 +169,85 @@ function BrowseListingsPageInner() {
     setMaxPrice("");
     setSortBy("newest");
     setPage(1);
+    setFiltersOpen(false);
   }
 
   const hasActiveFilters = search || category || condition || minPrice || maxPrice || sortBy !== "newest";
 
   return (
     <PageLayout>
+      {/* Mobile filter toggle button */}
+      <div className="flex items-center justify-between mb-4 lg:hidden">
+        <p className="text-slate-400 text-sm">
+          {loading ? "Loading..." : `${pagination?.total ?? 0} listing${pagination?.total !== 1 ? "s" : ""} found`}
+        </p>
+        <button
+          onClick={() => setFiltersOpen((o) => !o)}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+          </svg>
+          Filters
+          {hasActiveFilters && (
+            <span className="w-2 h-2 rounded-full bg-indigo-500" />
+          )}
+        </button>
+      </div>
+
       <div className="flex flex-col lg:flex-row gap-8">
-        <aside className="w-full lg:w-64 flex-shrink-0">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sticky top-24">
+        {/* Sidebar — hidden on mobile unless filtersOpen */}
+        <aside className={`w-full lg:w-64 flex-shrink-0 ${filtersOpen ? "block" : "hidden"} lg:block`}>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 lg:sticky lg:top-24">
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-bold text-white">Filters</h2>
-              {hasActiveFilters && (
-                <button onClick={clearFilters} className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-                  Clear all
+              <div className="flex items-center gap-3">
+                {hasActiveFilters && (
+                  <button onClick={clearFilters} className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                    Clear all
+                  </button>
+                )}
+                {/* Close button on mobile */}
+                <button
+                  onClick={() => setFiltersOpen(false)}
+                  className="lg:hidden text-slate-400 hover:text-white"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
-              )}
+              </div>
             </div>
 
-            <form onSubmit={handleSearch} className="mb-5">
+            {/* Live search input */}
+            <div className="mb-5">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2 block">Search</label>
               <div className="relative">
                 <input
                   type="text"
                   placeholder="Search listings..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-3 pr-8 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                 />
-                <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </button>
+                {search ? (
+                  <button
+                    onClick={() => { setSearch(""); setPage(1); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                ) : (
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </span>
+                )}
               </div>
-            </form>
+            </div>
 
             <div className="mb-5">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2 block">Category</label>
@@ -193,7 +255,7 @@ function BrowseListingsPageInner() {
                 {CATEGORIES.map((cat) => (
                   <button
                     key={cat.slug}
-                    onClick={() => { setCategory(cat.slug); setPage(1); }}
+                    onClick={() => { setCategory(cat.slug); setPage(1); setFiltersOpen(false); }}
                     className={`text-left text-sm px-3 py-2 rounded-lg transition-colors ${
                       category === cat.slug
                         ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
@@ -217,7 +279,7 @@ function BrowseListingsPageInner() {
                 ].map((opt) => (
                   <button
                     key={opt.value}
-                    onClick={() => { setCondition(opt.value); setPage(1); }}
+                    onClick={() => { setCondition(opt.value); setPage(1); setFiltersOpen(false); }}
                     className={`text-left text-sm px-3 py-2 rounded-lg transition-colors ${
                       condition === opt.value
                         ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
@@ -267,7 +329,7 @@ function BrowseListingsPageInner() {
         </aside>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-6">
+          <div className="hidden lg:flex items-center justify-between mb-6">
             <p className="text-slate-400 text-sm">
               {loading ? "Loading..." : `${pagination?.total ?? 0} listing${pagination?.total !== 1 ? "s" : ""} found`}
             </p>
