@@ -35,20 +35,38 @@ export async function GET(
     c.id        AS category_id,
     c.name      AS category_name,
     c.slug      AS category_slug,
-    -- Show real seller info if viewer IS the seller, hide if anonymous to others
-    CASE WHEN l.is_anonymous AND (u.id != $2 OR $2 IS NULL) THEN NULL ELSE u.id        END AS seller_id,
+    CASE WHEN l.is_anonymous AND (u.id != $2 OR $2 IS NULL) THEN NULL ELSE u.id END AS seller_id,
     CASE WHEN l.is_anonymous AND (u.id != $2 OR $2 IS NULL) THEN 'Anonymous'
-        ELSE u.username                                               END AS seller_username,
+         ELSE u.username END AS seller_username,
     CASE WHEN l.is_anonymous AND (u.id != $2 OR $2 IS NULL) THEN NULL
-        ELSE ur.is_verified_seller                                    END AS seller_is_verified,
+         ELSE (
+           SELECT COUNT(DISTINCT CASE WHEN o.status = 'delivered' THEN oi.order_id END)
+           FROM listings sl
+           LEFT JOIN order_items oi ON oi.listing_id = sl.id
+           LEFT JOIN orders o ON o.id = oi.order_id
+           WHERE sl.seller_id = u.id
+         )
+    END AS seller_total_sales,
     CASE WHEN l.is_anonymous AND (u.id != $2 OR $2 IS NULL) THEN NULL
-        ELSE ur.reputation_score                                      END AS seller_reputation,
+         ELSE COALESCE((
+           SELECT ROUND(AVG(r.rating) * 20)
+           FROM reviews r
+           JOIN listings rl ON rl.id = r.listing_id
+           WHERE rl.seller_id = u.id
+         ), 100)
+    END AS seller_reputation,
     CASE WHEN l.is_anonymous AND (u.id != $2 OR $2 IS NULL) THEN NULL
-        ELSE ur.total_sales                                           END AS seller_total_sales
+         ELSE (
+           SELECT COUNT(*) > 0
+           FROM reviews r
+           JOIN listings rl ON rl.id = r.listing_id
+           WHERE rl.seller_id = u.id
+             AND ROUND(AVG(r.rating) * 20) >= 85
+         )
+    END AS seller_is_verified
   FROM listings l
-  JOIN users u       ON l.seller_id   = u.id
-  JOIN categories c  ON l.category_id = c.id
-  LEFT JOIN user_reputation ur ON u.id = ur.user_id
+  JOIN users u      ON l.seller_id   = u.id
+  JOIN categories c ON l.category_id = c.id
   WHERE l.id = $1`,
   [listingId, viewerId]
 );

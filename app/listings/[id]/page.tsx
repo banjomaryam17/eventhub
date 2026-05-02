@@ -340,7 +340,7 @@ export default function ListingDetailPage() {
               {listing.seller_total_sales !== null && (
                 <p className="text-xs text-slate-500">
                   {listing.seller_total_sales} sales
-                  {listing.seller_reputation !== null && ` · ${listing.seller_reputation}% reputation`}
+{listing.seller_reputation !== null && ` · ${listing.seller_reputation}/100 reputation`}
                 </p>
               )}
             </div>
