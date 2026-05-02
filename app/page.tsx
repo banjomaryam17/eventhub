@@ -691,6 +691,12 @@ export default function HomePage() {
           </p>
           <div className="flex items-center gap-4">
             <a
+              href="/cookies"
+              className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
+            >
+              Cookie Preferences
+            </a>
+            <a
               href="/terms"
               className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
             >
@@ -701,12 +707,6 @@ export default function HomePage() {
               className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
             >
               Privacy
-            </a>
-            <a
-              href="/cookies"
-              className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
-            >
-              Cookie Preferences
             </a>
           </div>
         </div>
