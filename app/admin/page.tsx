@@ -13,9 +13,12 @@ interface Stats {
 
 export default function AdminPage() {
   const router = useRouter();
-  const [stats, setStats]   = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState("");
+  const [stats, setStats]             = useState<Stats | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState("");
+  const [resetRequests, setResetRequests] = useState<any[]>([]);
+  const [resettingId, setResettingId]     = useState<number | null>(null);
+  const [tempPasswords, setTempPasswords] = useState<Record<number, string>>({});
 
   useEffect(() => {
     async function fetchStats() {
@@ -28,6 +31,12 @@ export default function AdminPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         setStats(data);
+
+        const resetRes = await fetch("/api/admin/password-resets");
+        if (resetRes.ok) {
+          const resetData = await resetRes.json();
+          setResetRequests(resetData.requests ?? []);
+        }
       } catch (err: any) {
         setError(err.message ?? "Failed to fetch stats");
       } finally {
@@ -36,7 +45,6 @@ export default function AdminPage() {
     }
     fetchStats();
   }, []);
-
   if (loading) return <LoadingSpinner message="Loading dashboard..." />;
 
   if (error) return (
@@ -93,6 +101,56 @@ export default function AdminPage() {
           </a>
         </div>
       </div>
+      {/* Password Reset Requests */}
+{resetRequests.length > 0 && (
+  <div>
+    <h3 className="text-sm font-semibold text-slate-300 mb-4">
+      🔑 Password reset requests ({resetRequests.length})
+    </h3>
+    <div className="flex flex-col gap-3">
+      {resetRequests.map((req) => (
+        <div key={req.id} className="bg-slate-800/60 border border-slate-700 rounded-2xl p-4 flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <p className="text-sm font-medium text-white">@{req.username}</p>
+            <p className="text-xs text-slate-400">{req.email}</p>
+            <p className="text-xs text-slate-500 mt-1">
+              Requested {new Date(req.created_at).toLocaleDateString("en-IE")}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {tempPasswords[req.id] ? (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">
+                <p className="text-xs text-slate-400">Temp password:</p>
+                <p className="text-sm font-mono font-bold text-emerald-400">{tempPasswords[req.id]}</p>
+              </div>
+            ) : (
+              <button
+                disabled={resettingId === req.id}
+                onClick={async () => {
+                  setResettingId(req.id);
+                  const res = await fetch("/api/admin/password-resets", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ request_id: req.id, user_id: req.user_id }),
+                  });
+                  const data = await res.json();
+                  if (res.ok) {
+                    setTempPasswords((prev) => ({ ...prev, [req.id]: data.temp_password }));
+                    setResetRequests((prev) => prev.filter((r) => r.id !== req.id));
+                  }
+                  setResettingId(null);
+                }}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-xl transition-colors disabled:opacity-50"
+              >
+                {resettingId === req.id ? "Resetting..." : "Reset password"}
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
     </div>
   );
 }
