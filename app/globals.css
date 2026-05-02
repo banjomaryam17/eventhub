@@ -85,11 +85,11 @@ body {
 .light-mode nav button {
   color: #0f172a !important;
 }
-
 .light-mode nav a:hover,
 .light-mode nav button:hover {
-  background-color: #e2e8f0 !important;
-  color: #ffffff !important;
+  background-color: #f1f5f9;
+  color: #0f172a;
+  transition: all 0.2s ease;
 }
 
 .light-mode nav .text-indigo-400 {

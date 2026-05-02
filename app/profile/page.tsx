@@ -216,7 +216,7 @@ export default function ProfilePage() {
 
             {/* Action buttons — stack on mobile */}
             <div className="flex flex-wrap gap-2 sm:flex-col sm:items-end">
-              <Button onClick={openEdit} variant="secondary" size="sm">✏️ Edit profile</Button>
+              <Button onClick={openEdit} variant="secondary" size="sm">Edit profile</Button>
               <Button href="/wishlist" variant="secondary" size="sm">♡ Wishlist</Button>
               <Button href="/dashboard" variant="secondary" size="sm">Dashboard</Button>
             </div>
