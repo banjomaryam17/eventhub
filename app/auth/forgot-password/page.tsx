@@ -1,12 +1,28 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail]       = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
+  const [email, setEmail]               = useState("");
+  const [submitted, setSubmitted]       = useState(false);
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState("");
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!submitted) return;
+
+    const interval = setInterval(async () => {
+      const res = await fetch(`/api/auth/forgot-password/status?email=${encodeURIComponent(email)}`);
+      const data = await res.json();
+      if (data.temp_password) {
+        setTempPassword(data.temp_password);
+        clearInterval(interval);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [submitted]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,11 +67,22 @@ export default function ForgotPasswordPage() {
                 </svg>
               </div>
               <h2 className="text-lg font-bold text-white">Request submitted!</h2>
-              <p className="text-slate-400 text-sm">
-                Your password reset request has been sent to the admin. 
-                You will receive a temporary password shortly. 
-                Please check back or contact support.
-              </p>
+
+              {tempPassword ? (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+                  <p className="text-sm text-slate-400 mb-1">Your temporary password:</p>
+                  <p className="text-lg font-mono font-bold text-emerald-400">{tempPassword}</p>
+                  <p className="text-xs text-slate-500 mt-2">Use this to log in, then change your password.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-5 h-5 border-2 border-slate-700 border-t-indigo-500 rounded-full animate-spin" />
+                  <p className="text-slate-400 text-sm">
+                    Waiting for admin to reset your password... this page will update automatically.
+                  </p>
+                </div>
+              )}
+
               <Link href="/auth/login" className="text-indigo-400 hover:text-indigo-300 text-sm transition-colors">
                 ← Back to login
               </Link>
