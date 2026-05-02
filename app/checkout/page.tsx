@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import PageLayout from "@/components/PageLayout";
 import { Button, Card, LoadingSpinner } from "@/components/ui";
 import { loadStripe } from "@stripe/stripe-js";
@@ -107,9 +107,10 @@ function PaymentForm({
   );
 }
 
-export default function CheckoutPage() {
+ function CheckoutPage() {
   const router = useRouter();
-
+  const searchParams = useSearchParams();
+  const discountCode = searchParams.get("discount") ?? "";
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [summary, setSummary] = useState<CartSummary | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -198,7 +199,7 @@ useEffect(() => {
       const checkoutRes = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shipping_address_id: addressId }),
+        body: JSON.stringify({ shipping_address_id: addressId, discount_code: discountCode }),
       });
 
       const checkoutData = await checkoutRes.json();
@@ -226,7 +227,7 @@ useEffect(() => {
   useEffect(() => {
     async function initCheckout() {
       try {
-        const cartRes = await fetch("/api/cart");
+        const cartRes = await fetch(`/api/cart${discountCode ? `?discount=${discountCode}` : ""}`);
 
         if (cartRes.status === 401) {
           router.push("/auth/login");
@@ -420,5 +421,12 @@ useEffect(() => {
         )}
       </div>
     </PageLayout>
+  );
+}
+export default function CheckoutPageWrapper() {
+  return (
+    <Suspense fallback={<div className="text-slate-400 p-8">Loading...</div>}>
+      <CheckoutPage />
+    </Suspense>
   );
 }

@@ -270,14 +270,13 @@ async function actuallyRemoveItem(listingId: number) {
               </div>
 
               <Button
-                href="/checkout"
-                size="lg"
-                fullWidth
-                disabled={items.some((i) => !i.is_active)}
-              >
-                Proceed to checkout →
-              </Button>
-
+  href={`/checkout${summary?.discount_code ? `?discount=${summary.discount_code}` : ""}`}
+  size="lg"
+  fullWidth
+  disabled={items.some((i) => !i.is_active)}
+>
+  Proceed to checkout →
+</Button>
               {items.some((i) => !i.is_active) && (
                 <p className="text-xs text-red-400 text-center mt-3">
                   Remove unavailable items before checking out
