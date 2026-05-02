@@ -55,13 +55,12 @@ export async function GET(
            WHERE rl.seller_id = u.id
          ), 100)
     END AS seller_reputation,
-    CASE WHEN l.is_anonymous AND (u.id != $2 OR $2 IS NULL) THEN NULL
+    CASE WHEN l.is_anonymous AND (u.id != $2 OR $2 IS NULL) THEN NULL::boolean
          ELSE (
-           SELECT COUNT(*) > 0
+           SELECT COALESCE(ROUND(AVG(r.rating) * 20), 100) >= 85
            FROM reviews r
            JOIN listings rl ON rl.id = r.listing_id
            WHERE rl.seller_id = u.id
-             AND ROUND(AVG(r.rating) * 20) >= 85
          )
     END AS seller_is_verified
   FROM listings l
