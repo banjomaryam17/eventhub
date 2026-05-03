@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const { shipping_address_id } = await req.json();
+    const { shipping_address_id, discount_code } = await req.json();
 
     if (!shipping_address_id || isNaN(parseInt(shipping_address_id))) {
       return NextResponse.json(
@@ -36,9 +36,7 @@ export async function POST(req: Request) {
     }
 
     const addressCheck = await pool.query(
-      `SELECT id
-       FROM shipping_addresses
-       WHERE id = $1 AND user_id = $2`,
+      `SELECT id FROM shipping_addresses WHERE id = $1 AND user_id = $2`,
       [parseInt(shipping_address_id), session.userId]
     );
 
@@ -88,28 +86,24 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-
       if (item.stock_quantity <= 0) {
         return NextResponse.json(
           { error: `"${item.title}" is out of stock` },
           { status: 400 }
         );
       }
-
       if (item.quantity > item.stock_quantity) {
         return NextResponse.json(
           { error: `Only ${item.stock_quantity} of "${item.title}" left in stock` },
           { status: 400 }
         );
       }
-
       if (item.seller_is_banned) {
         return NextResponse.json(
           { error: `"${item.title}" is no longer available — seller account suspended` },
           { status: 400 }
         );
       }
-
       if (item.seller_id === session.userId) {
         return NextResponse.json(
           { error: `You cannot purchase your own listing "${item.title}"` },
@@ -123,7 +117,50 @@ export async function POST(req: Request) {
     }, 0);
 
     const shippingCents = Math.round(SHIPPING_COST * 100);
-    const totalCents = itemTotalCents + shippingCents;
+
+    // Discount logic
+    let discountAmountCents = 0;
+    let appliedDiscountCode = "";
+
+    if (discount_code) {
+      const discountResult = await pool.query(
+        `SELECT id, discount_percent, max_uses, used_count 
+         FROM discount_codes
+         WHERE code = $1 AND is_active = TRUE
+         AND (expires_at IS NULL OR expires_at > NOW())`,
+        [discount_code.toUpperCase()]
+      );
+
+      if (discountResult.rows.length > 0) {
+        const discount = discountResult.rows[0];
+
+        // Check max uses
+        if (discount.max_uses !== null && discount.used_count >= discount.max_uses) {
+          return NextResponse.json(
+            { error: "This discount code has reached its maximum uses" },
+            { status: 400 }
+          );
+        }
+
+        // Check user hasn't already used this code
+        const alreadyUsed = await pool.query(
+          `SELECT 1 FROM used_discounts WHERE user_id = $1 AND discount_code = $2`,
+          [session.userId, discount_code.toUpperCase()]
+        );
+
+        if (alreadyUsed.rows.length > 0) {
+          return NextResponse.json(
+            { error: "You have already used this discount code" },
+            { status: 400 }
+          );
+        }
+
+        discountAmountCents = Math.round((itemTotalCents * discount.discount_percent) / 100);
+        appliedDiscountCode = discount_code.toUpperCase();
+      }
+    }
+
+    const totalCents = itemTotalCents + shippingCents - discountAmountCents;
 
     if (totalCents < 50) {
       return NextResponse.json(
@@ -140,12 +177,14 @@ export async function POST(req: Request) {
         cart_id: cartId.toString(),
         shipping_address_id: parseInt(shipping_address_id).toString(),
         shipping_cost: SHIPPING_COST.toFixed(2),
+        discount_code: appliedDiscountCode,
       },
     });
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       itemTotal: (itemTotalCents / 100).toFixed(2),
+      discountAmount: (discountAmountCents / 100).toFixed(2),
       shippingCost: SHIPPING_COST.toFixed(2),
       total: (totalCents / 100).toFixed(2),
       itemCount: itemsResult.rows.length,

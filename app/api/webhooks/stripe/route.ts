@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     event = stripe.webhooks.constructEvent(
       body,
       signature!,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      process.env.STRIPE_WEBHOOK_SECRET!,
     );
   } catch (err) {
     console.error("Stripe webhook signature verification failed:", err);
@@ -29,7 +29,9 @@ export async function POST(req: Request) {
 
   const userId = parseInt(paymentIntent.metadata.user_id);
   const cartId = parseInt(paymentIntent.metadata.cart_id);
-  const shippingAddressId = parseInt(paymentIntent.metadata.shipping_address_id);
+  const shippingAddressId = parseInt(
+    paymentIntent.metadata.shipping_address_id,
+  );
   const shippingCost = parseFloat(paymentIntent.metadata.shipping_cost ?? "0");
 
   if (!userId || !cartId || !shippingAddressId) {
@@ -47,7 +49,7 @@ export async function POST(req: Request) {
      FROM cart_items ci
      JOIN listings l ON ci.listing_id = l.id
      WHERE ci.cart_id = $1`,
-    [cartId]
+    [cartId],
   );
 
   if (itemsResult.rows.length === 0) {
@@ -70,7 +72,7 @@ export async function POST(req: Request) {
 
     const existingOrder = await client.query(
       `SELECT id FROM orders WHERE stripe_payment_intent_id = $1`,
-      [paymentIntent.id]
+      [paymentIntent.id],
     );
 
     if (existingOrder.rows.length > 0) {
@@ -100,7 +102,7 @@ export async function POST(req: Request) {
         shippingCost.toFixed(2),
         totalPrice.toFixed(2),
         paymentIntent.id,
-      ]
+      ],
     );
 
     const orderId = orderResult.rows[0].id;
@@ -128,28 +130,40 @@ export async function POST(req: Request) {
           item.price,
           item.quantity,
           subtotal.toFixed(2),
-        ]
+        ],
       );
 
       await client.query(
         `UPDATE listings
          SET quantity = quantity - $1
          WHERE id = $2`,
-        [item.quantity, item.listing_id]
+        [item.quantity, item.listing_id],
       );
 
       await client.query(
         `UPDATE listings
          SET is_active = FALSE
          WHERE id = $1 AND quantity <= 0`,
-        [item.listing_id]
+        [item.listing_id],
       );
     }
 
-    await client.query(
-      "DELETE FROM cart_items WHERE cart_id = $1",
-      [cartId]
-    );
+    await client.query("DELETE FROM cart_items WHERE cart_id = $1", [cartId]);
+    // Record discount usage if a code was used
+    const usedDiscountCode = paymentIntent.metadata.discount_code;
+    if (usedDiscountCode) {
+      await client.query(
+        `INSERT INTO used_discounts (user_id, discount_code, order_id)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, discount_code) DO NOTHING`,
+        [userId, usedDiscountCode, orderId],
+      );
+
+      await client.query(
+        `UPDATE discount_codes SET used_count = used_count + 1 WHERE code = $1`,
+        [usedDiscountCode],
+      );
+    }
 
     await client.query("COMMIT");
 
