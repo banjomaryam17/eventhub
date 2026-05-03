@@ -14,7 +14,10 @@ export async function GET(req: Request) {
     const maxPrice = parseFloat(searchParams.get("maxPrice") ?? "999999");
     const sortBy = searchParams.get("sortBy") ?? "newest";
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
-    const limit = Math.min(48, Math.max(1, parseInt(searchParams.get("limit") ?? "24")));
+    const limit = Math.min(
+      48,
+      Math.max(1, parseInt(searchParams.get("limit") ?? "24")),
+    );
     const offset = (page - 1) * limit;
 
     const validConditions = ["new", "used", "refurbished"];
@@ -22,7 +25,7 @@ export async function GET(req: Request) {
     if (condition && !validConditions.includes(condition)) {
       return NextResponse.json(
         { error: "Invalid condition. Must be new, used, or refurbished." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -47,7 +50,9 @@ export async function GET(req: Request) {
     let paramIndex = 3;
 
     if (search) {
-      conditions.push(`(l.title ILIKE $${paramIndex} OR l.description ILIKE $${paramIndex})`);
+      conditions.push(
+        `(l.title ILIKE $${paramIndex} OR l.description ILIKE $${paramIndex})`,
+      );
       values.push(`%${search}%`);
       paramIndex++;
     }
@@ -143,7 +148,7 @@ export async function GET(req: Request) {
     console.error("GET /api/listings error:", err);
     return NextResponse.json(
       { error: "Failed to fetch listings" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -155,7 +160,7 @@ export async function POST(req: Request) {
     if (!session) {
       return NextResponse.json(
         { error: "You must be logged in to create a listing" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -181,14 +186,14 @@ export async function POST(req: Request) {
     if (!title || typeof title !== "string" || title.trim().length < 3) {
       return NextResponse.json(
         { error: "Title must be at least 3 characters" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (title.trim().length > 100) {
       return NextResponse.json(
         { error: "Title must be 100 characters or less" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -197,7 +202,7 @@ export async function POST(req: Request) {
     if (isNaN(parsedPrice) || parsedPrice < 0) {
       return NextResponse.json(
         { error: "Price must be a positive number" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -206,7 +211,7 @@ export async function POST(req: Request) {
     if (isNaN(parsedQuantity) || parsedQuantity < 1) {
       return NextResponse.json(
         { error: "Quantity must be at least 1" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -215,26 +220,26 @@ export async function POST(req: Request) {
     if (!condition || !validConditions.includes(condition)) {
       return NextResponse.json(
         { error: "Condition must be new, used, or refurbished" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!category_id || isNaN(parseInt(category_id))) {
       return NextResponse.json(
         { error: "A valid category is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const categoryCheck = await pool.query(
       "SELECT id FROM categories WHERE id = $1",
-      [parseInt(category_id)]
+      [parseInt(category_id)],
     );
 
     if (categoryCheck.rows.length === 0) {
       return NextResponse.json(
         { error: "Selected category does not exist" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -246,7 +251,7 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.json(
         { error: "Pickup address is required for local collection logic" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -257,15 +262,7 @@ export async function POST(req: Request) {
       postal_code: pickup_postal_code,
       country: pickup_country || "Ireland",
     });
-
-    const pickupCoords = await geocodeAddress(pickupAddress);
-
-    if (!pickupCoords) {
-      return NextResponse.json(
-        { error: "Could not find the pickup location. Please check the address." },
-        { status: 400 }
-      );
-    }
+    const pickupCoords = await geocodeAddress(pickupAddress).catch(() => null);
 
     const result = await pool.query(
       `INSERT INTO listings
@@ -303,9 +300,9 @@ export async function POST(req: Request) {
         pickup_state.trim(),
         pickup_postal_code.trim(),
         pickup_country?.trim() || "Ireland",
-        pickupCoords.lat,
-        pickupCoords.lng,
-      ]
+        pickupCoords?.lat ?? null,
+        pickupCoords?.lng ?? null,
+      ],
     );
 
     const newListing = result.rows[0];
@@ -314,7 +311,7 @@ export async function POST(req: Request) {
       await pool.query(
         `INSERT INTO listing_images (listing_id, image_url, is_primary)
          VALUES ($1, $2, TRUE)`,
-        [newListing.id, image_url.trim()]
+        [newListing.id, image_url.trim()],
       );
     }
 
@@ -322,7 +319,7 @@ export async function POST(req: Request) {
       `INSERT INTO user_reputation (user_id)
        VALUES ($1)
        ON CONFLICT DO NOTHING`,
-      [session.userId]
+      [session.userId],
     );
 
     return NextResponse.json(
@@ -337,13 +334,13 @@ export async function POST(req: Request) {
           created_at: newListing.created_at,
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (err) {
     console.error("POST /api/listings error:", err);
     return NextResponse.json(
       { error: "Failed to create listing" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

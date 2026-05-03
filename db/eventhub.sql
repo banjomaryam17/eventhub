@@ -226,6 +226,25 @@ CREATE TABLE user_reputation (
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS password_reset_requests (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id),
+  username VARCHAR(50),
+  email VARCHAR(255),
+  status VARCHAR(20) DEFAULT 'pending',
+  temp_password VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS used_discounts (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id),
+  discount_code VARCHAR(50),
+  order_id INT REFERENCES orders(id),
+  used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, discount_code)
+);
 /* Calculate reputation score using average among sales, by default their score will be 100% if they have one good sale, any negative sale
 removes from this precentage. Having 100 sales, 160 good and 40 bad will give you a score of 80% for example. Just calculate average in backend*/
 
@@ -301,3 +320,7 @@ INSERT INTO categories (name, slug) VALUES
     ('Toys & Games',  'toys-games'),
     ('Vehicles',      'vehicles'),
     ('Other',         'other');
+
+ ALTER TABLE discount_codes 
+ADD COLUMN IF NOT EXISTS max_uses INT DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS used_count INT DEFAULT 0;

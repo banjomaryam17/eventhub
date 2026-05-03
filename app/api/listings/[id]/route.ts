@@ -5,7 +5,7 @@ import { buildAddressString, geocodeAddress } from "@/lib/geo";
 
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -15,7 +15,10 @@ export async function GET(
     const viewerId = session?.userId ?? null;
 
     if (isNaN(listingId)) {
-      return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid listing ID" },
+        { status: 400 },
+      );
     }
 
     const result = await pool.query(
@@ -93,7 +96,7 @@ export async function GET(
        JOIN users u ON l.seller_id = u.id
        JOIN categories c ON l.category_id = c.id
        WHERE l.id = $1`,
-      [listingId, viewerId]
+      [listingId, viewerId],
     );
 
     if (result.rows.length === 0) {
@@ -107,7 +110,7 @@ export async function GET(
        FROM listing_images
        WHERE listing_id = $1
        ORDER BY is_primary DESC, sort_order ASC`,
-      [listingId]
+      [listingId],
     );
 
     const reviewsResult = await pool.query(
@@ -122,7 +125,7 @@ export async function GET(
        WHERE r.listing_id = $1
        ORDER BY r.created_at DESC
        LIMIT 10`,
-      [listingId]
+      [listingId],
     );
 
     return NextResponse.json({
@@ -136,14 +139,14 @@ export async function GET(
     console.error("GET /api/listings/[id] error:", err);
     return NextResponse.json(
       { error: "Failed to fetch listing" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PUT(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getSession();
@@ -156,12 +159,15 @@ export async function PUT(
     const listingId = parseInt(id);
 
     if (isNaN(listingId)) {
-      return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid listing ID" },
+        { status: 400 },
+      );
     }
 
     const existing = await pool.query(
       "SELECT id, seller_id FROM listings WHERE id = $1",
-      [listingId]
+      [listingId],
     );
 
     if (existing.rows.length === 0) {
@@ -171,7 +177,7 @@ export async function PUT(
     if (existing.rows[0].seller_id !== session.userId) {
       return NextResponse.json(
         { error: "You can only edit your own listings" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -198,14 +204,14 @@ export async function PUT(
       if (typeof title !== "string" || title.trim().length < 3) {
         return NextResponse.json(
           { error: "Title must be at least 3 characters" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       if (title.trim().length > 150) {
         return NextResponse.json(
           { error: "Title must be 150 characters or less" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -216,7 +222,7 @@ export async function PUT(
       if (isNaN(parsedPrice) || parsedPrice < 0) {
         return NextResponse.json(
           { error: "Price must be a positive number" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -227,7 +233,7 @@ export async function PUT(
       if (isNaN(parsedQty) || parsedQty < 0) {
         return NextResponse.json(
           { error: "Quantity must be 0 or more" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -237,20 +243,20 @@ export async function PUT(
     if (condition !== undefined && !validConditions.includes(condition)) {
       return NextResponse.json(
         { error: "Condition must be new, used, or refurbished" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (category_id !== undefined) {
       const categoryCheck = await pool.query(
         "SELECT id FROM categories WHERE id = $1",
-        [parseInt(category_id)]
+        [parseInt(category_id)],
       );
 
       if (categoryCheck.rows.length === 0) {
         return NextResponse.json(
           { error: "Selected category does not exist" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -314,7 +320,7 @@ export async function PUT(
       ) {
         return NextResponse.json(
           { error: "Complete pickup address is required for local pickup" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -326,14 +332,9 @@ export async function PUT(
         country: pickup_country || "Ireland",
       });
 
-      const pickupCoords = await geocodeAddress(pickupAddress);
-
-      if (!pickupCoords) {
-        return NextResponse.json(
-          { error: "Could not find the pickup location. Please check the address." },
-          { status: 400 }
-        );
-      }
+      const pickupCoords = await geocodeAddress(pickupAddress).catch(
+        () => null,
+      );
 
       updates.push(`pickup_address_line1 = $${paramIndex++}`);
       values.push(pickup_address_line1.trim());
@@ -351,16 +352,16 @@ export async function PUT(
       values.push((pickup_country || "Ireland").trim());
 
       updates.push(`pickup_latitude = $${paramIndex++}`);
-      values.push(pickupCoords.lat);
+      values.push(pickupCoords?.lat ?? null);
 
       updates.push(`pickup_longitude = $${paramIndex++}`);
-      values.push(pickupCoords.lng);
+      values.push(pickupCoords?.lng ?? null);
     }
 
     if (updates.length === 0) {
       return NextResponse.json(
         { error: "No fields to update" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -371,7 +372,7 @@ export async function PUT(
        SET ${updates.join(", ")}
        WHERE id = $${paramIndex}
        RETURNING id, title, price, quantity, condition, is_active, updated_at`,
-      values
+      values,
     );
 
     return NextResponse.json({
@@ -382,14 +383,14 @@ export async function PUT(
     console.error("PUT /api/listings/[id] error:", err);
     return NextResponse.json(
       { error: "Failed to update listing" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getSession();
@@ -402,12 +403,15 @@ export async function DELETE(
     const listingId = parseInt(id);
 
     if (isNaN(listingId)) {
-      return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid listing ID" },
+        { status: 400 },
+      );
     }
 
     const existing = await pool.query(
       "SELECT id, seller_id FROM listings WHERE id = $1",
-      [listingId]
+      [listingId],
     );
 
     if (existing.rows.length === 0) {
@@ -420,13 +424,13 @@ export async function DELETE(
     if (!isOwner && !isAdmin) {
       return NextResponse.json(
         { error: "You do not have permission to delete this listing" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     await pool.query(
       "UPDATE listings SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
-      [listingId]
+      [listingId],
     );
 
     return NextResponse.json({ message: "Listing removed successfully" });
@@ -434,7 +438,7 @@ export async function DELETE(
     console.error("DELETE /api/listings/[id] error:", err);
     return NextResponse.json(
       { error: "Failed to delete listing" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
