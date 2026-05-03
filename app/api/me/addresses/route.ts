@@ -1,11 +1,8 @@
-// app/api/me/addresses/route.ts
-
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import { buildAddressString, geocodeAddress } from "@/lib/geo";
 
-// GET /api/me/addresses
-// Returns all saved addresses for the user
 export async function GET() {
   try {
     const session = await getSession();
@@ -25,6 +22,8 @@ export async function GET() {
         postal_code,
         country,
         is_default,
+        latitude,
+        longitude,
         created_at
        FROM shipping_addresses
        WHERE user_id = $1
@@ -42,8 +41,6 @@ export async function GET() {
   }
 }
 
-// POST /api/me/addresses
-// Creates a new shipping address for the user
 export async function POST(req: Request) {
   try {
     const session = await getSession();
@@ -70,12 +67,28 @@ export async function POST(req: Request) {
       );
     }
 
+    const addressString = buildAddressString({
+      address_line1,
+      city,
+      state,
+      postal_code,
+      country,
+    });
+
+    const coords = await geocodeAddress(addressString);
+
+    if (!coords) {
+      return NextResponse.json(
+        { error: "Could not find this address. Please check it and try again." },
+        { status: 400 }
+      );
+    }
+
     const client = await pool.connect();
 
     try {
       await client.query("BEGIN");
 
-      // Clear existing default first before adding new
       if (is_default) {
         await client.query(
           `UPDATE shipping_addresses
@@ -95,6 +108,15 @@ export async function POST(req: Request) {
       const shouldBeDefault =
         is_default || existingResult.rows[0].count === 0;
 
+      if (shouldBeDefault) {
+        await client.query(
+          `UPDATE shipping_addresses
+           SET is_default = FALSE
+           WHERE user_id = $1`,
+          [session.userId]
+        );
+      }
+
       const insertResult = await client.query(
         `INSERT INTO shipping_addresses
           (
@@ -106,9 +128,11 @@ export async function POST(req: Request) {
             state,
             postal_code,
             country,
-            is_default
+            is_default,
+            latitude,
+            longitude
           )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
          RETURNING
           id,
           full_name,
@@ -119,6 +143,8 @@ export async function POST(req: Request) {
           postal_code,
           country,
           is_default,
+          latitude,
+          longitude,
           created_at`,
         [
           session.userId,
@@ -130,6 +156,8 @@ export async function POST(req: Request) {
           postal_code.trim(),
           country.trim(),
           shouldBeDefault,
+          coords.lat,
+          coords.lng,
         ]
       );
 

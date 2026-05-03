@@ -17,16 +17,18 @@ export async function GET() {
         o.created_at,
         o.shipping_cost,
         o.total_price,
-
+        o.delivery_method,
+        o.pickup_distance_km,
+    
         oi.quantity,
         oi.price_snapshot,
         oi.title_snapshot,
         oi.subtotal,
         oi.listing_id,
-
+    
         buyer.username AS buyer_username,
         buyer.email AS buyer_email,
-
+    
         sa.full_name,
         sa.address_line1,
         sa.address_line2,

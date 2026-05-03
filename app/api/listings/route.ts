@@ -1,22 +1,24 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import { buildAddressString, geocodeAddress } from "@/lib/geo";
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
 
-    const search    = searchParams.get("search")?.trim() ?? "";
-    const category  = searchParams.get("category")?.trim() ?? "";
+    const search = searchParams.get("search")?.trim() ?? "";
+    const category = searchParams.get("category")?.trim() ?? "";
     const condition = searchParams.get("condition")?.trim() ?? "";
-    const minPrice  = parseFloat(searchParams.get("minPrice") ?? "0");
-    const maxPrice  = parseFloat(searchParams.get("maxPrice") ?? "999999");
-    const sortBy    = searchParams.get("sortBy") ?? "newest";
-    const page      = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
-    const limit     = Math.min(48, Math.max(1, parseInt(searchParams.get("limit") ?? "24")));
-    const offset    = (page - 1) * limit;
+    const minPrice = parseFloat(searchParams.get("minPrice") ?? "0");
+    const maxPrice = parseFloat(searchParams.get("maxPrice") ?? "999999");
+    const sortBy = searchParams.get("sortBy") ?? "newest";
+    const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
+    const limit = Math.min(48, Math.max(1, parseInt(searchParams.get("limit") ?? "24")));
+    const offset = (page - 1) * limit;
 
     const validConditions = ["new", "used", "refurbished"];
+
     if (condition && !validConditions.includes(condition)) {
       return NextResponse.json(
         { error: "Invalid condition. Must be new, used, or refurbished." },
@@ -24,15 +26,15 @@ export async function GET(req: Request) {
       );
     }
 
-    
     const validSorts: Record<string, string> = {
-      newest:       "l.created_at DESC",
-      oldest:       "l.created_at ASC",
-      price_asc:    "l.price ASC",
-      price_desc:   "l.price DESC",
-      top_rated:    "l.average_rating DESC",
+      newest: "l.created_at DESC",
+      oldest: "l.created_at ASC",
+      price_asc: "l.price ASC",
+      price_desc: "l.price DESC",
+      top_rated: "l.average_rating DESC",
       most_reviews: "l.review_count DESC",
     };
+
     const orderBy = validSorts[sortBy] ?? validSorts.newest;
 
     const conditions: string[] = [
@@ -40,6 +42,7 @@ export async function GET(req: Request) {
       "l.price >= $1",
       "l.price <= $2",
     ];
+
     const values: (string | number)[] = [minPrice, maxPrice];
     let paramIndex = 3;
 
@@ -63,9 +66,6 @@ export async function GET(req: Request) {
 
     const whereClause = conditions.join(" AND ");
 
-    // ── Main query
-    // Gets listings with seller info, category, and primary image
-    // is_anonymous hides the seller's name if they toggled it on
     const query = `
       SELECT
         l.id,
@@ -78,27 +78,25 @@ export async function GET(req: Request) {
         l.average_rating,
         l.review_count,
         l.created_at,
-        c.id         AS category_id,
-        c.name       AS category_name,
-        c.slug       AS category_slug,
-        -- Hide seller identity if anonymous
-        CASE WHEN l.is_anonymous THEN NULL ELSE u.id   END AS seller_id,
-        CASE WHEN l.is_anonymous THEN 'Anonymous'      
-             ELSE u.username END                           AS seller_username,
-        CASE WHEN l.is_anonymous THEN NULL
-             ELSE ur.is_verified_seller END                AS seller_is_verified,
-        CASE WHEN l.is_anonymous THEN NULL
-             ELSE ur.reputation_score END                  AS seller_reputation,
-        -- Primary image URL (null if no images uploaded yet)
+        c.id AS category_id,
+        c.name AS category_name,
+        c.slug AS category_slug,
+
+        CASE WHEN l.is_anonymous THEN NULL ELSE u.id END AS seller_id,
+        CASE WHEN l.is_anonymous THEN 'Anonymous' ELSE u.username END AS seller_username,
+        CASE WHEN l.is_anonymous THEN NULL ELSE ur.is_verified_seller END AS seller_is_verified,
+        CASE WHEN l.is_anonymous THEN NULL ELSE ur.reputation_score END AS seller_reputation,
+
         (
           SELECT li.image_url
           FROM listing_images li
           WHERE li.listing_id = l.id AND li.is_primary = TRUE
           LIMIT 1
         ) AS primary_image
+
       FROM listings l
-      JOIN users u       ON l.seller_id   = u.id
-      JOIN categories c  ON l.category_id = c.id
+      JOIN users u ON l.seller_id = u.id
+      JOIN categories c ON l.category_id = c.id
       LEFT JOIN user_reputation ur ON u.id = ur.user_id
       WHERE ${whereClause}
       ORDER BY ${orderBy}
@@ -107,7 +105,6 @@ export async function GET(req: Request) {
 
     values.push(limit, offset);
 
-    // ── Count query (for pagination) 
     const countQuery = `
       SELECT COUNT(*) AS total
       FROM listings l
@@ -142,7 +139,6 @@ export async function GET(req: Request) {
         sortBy,
       },
     });
-
   } catch (err) {
     console.error("GET /api/listings error:", err);
     return NextResponse.json(
@@ -151,10 +147,11 @@ export async function GET(req: Request) {
     );
   }
 }
+
 export async function POST(req: Request) {
   try {
-    // Auth check — must be logged in 
     const session = await getSession();
+
     if (!session) {
       return NextResponse.json(
         { error: "You must be logged in to create a listing" },
@@ -162,8 +159,8 @@ export async function POST(req: Request) {
       );
     }
 
-    //  Parse body 
     const body = await req.json();
+
     const {
       title,
       description,
@@ -172,11 +169,15 @@ export async function POST(req: Request) {
       condition,
       category_id,
       is_anonymous,
-      image_url,      // single image URL for now
-                      // Phase 2: replace with Cloudinary multi-image upload
+      image_url,
+
+      pickup_address_line1,
+      pickup_city,
+      pickup_state,
+      pickup_postal_code,
+      pickup_country,
     } = body;
 
-    //3. Server-side validation 
     if (!title || typeof title !== "string" || title.trim().length < 3) {
       return NextResponse.json(
         { error: "Title must be at least 3 characters" },
@@ -192,6 +193,7 @@ export async function POST(req: Request) {
     }
 
     const parsedPrice = parseFloat(price);
+
     if (isNaN(parsedPrice) || parsedPrice < 0) {
       return NextResponse.json(
         { error: "Price must be a positive number" },
@@ -200,6 +202,7 @@ export async function POST(req: Request) {
     }
 
     const parsedQuantity = parseInt(quantity);
+
     if (isNaN(parsedQuantity) || parsedQuantity < 1) {
       return NextResponse.json(
         { error: "Quantity must be at least 1" },
@@ -208,6 +211,7 @@ export async function POST(req: Request) {
     }
 
     const validConditions = ["new", "used", "refurbished"];
+
     if (!condition || !validConditions.includes(condition)) {
       return NextResponse.json(
         { error: "Condition must be new, used, or refurbished" },
@@ -222,11 +226,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check category exists 
     const categoryCheck = await pool.query(
       "SELECT id FROM categories WHERE id = $1",
       [parseInt(category_id)]
     );
+
     if (categoryCheck.rows.length === 0) {
       return NextResponse.json(
         { error: "Selected category does not exist" },
@@ -234,11 +238,55 @@ export async function POST(req: Request) {
       );
     }
 
-    //  Insert listing
+    if (
+      !pickup_address_line1 ||
+      !pickup_city ||
+      !pickup_state ||
+      !pickup_postal_code
+    ) {
+      return NextResponse.json(
+        { error: "Pickup address is required for local collection logic" },
+        { status: 400 }
+      );
+    }
+
+    const pickupAddress = buildAddressString({
+      address_line1: pickup_address_line1,
+      city: pickup_city,
+      state: pickup_state,
+      postal_code: pickup_postal_code,
+      country: pickup_country || "Ireland",
+    });
+
+    const pickupCoords = await geocodeAddress(pickupAddress);
+
+    if (!pickupCoords) {
+      return NextResponse.json(
+        { error: "Could not find the pickup location. Please check the address." },
+        { status: 400 }
+      );
+    }
+
     const result = await pool.query(
       `INSERT INTO listings
-        (seller_id, category_id, title, description, price, quantity, condition, is_anonymous)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        (
+          seller_id,
+          category_id,
+          title,
+          description,
+          price,
+          quantity,
+          condition,
+          is_anonymous,
+          pickup_address_line1,
+          pickup_city,
+          pickup_state,
+          pickup_postal_code,
+          pickup_country,
+          pickup_latitude,
+          pickup_longitude
+        )
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING id, title, price, condition, is_active, created_at`,
       [
         session.userId,
@@ -248,13 +296,20 @@ export async function POST(req: Request) {
         parsedPrice,
         parsedQuantity,
         condition,
-        is_anonymous === true, // defaults to false if not provided
+        is_anonymous === true,
+
+        pickup_address_line1.trim(),
+        pickup_city.trim(),
+        pickup_state.trim(),
+        pickup_postal_code.trim(),
+        pickup_country?.trim() || "Ireland",
+        pickupCoords.lat,
+        pickupCoords.lng,
       ]
     );
 
     const newListing = result.rows[0];
 
-    //  Insert primary image if provided
     if (image_url && typeof image_url === "string" && image_url.trim()) {
       await pool.query(
         `INSERT INTO listing_images (listing_id, image_url, is_primary)
@@ -263,8 +318,6 @@ export async function POST(req: Request) {
       );
     }
 
-    //. Create user_reputation row if it doesn't exist yet ─
-    // First listing a user creates — ensures reputation tracking works
     await pool.query(
       `INSERT INTO user_reputation (user_id)
        VALUES ($1)
@@ -286,7 +339,6 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     );
-
   } catch (err) {
     console.error("POST /api/listings error:", err);
     return NextResponse.json(

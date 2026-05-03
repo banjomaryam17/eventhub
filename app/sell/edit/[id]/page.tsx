@@ -1,5 +1,6 @@
 "use client";
 export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import PageLayout from "@/components/PageLayout";
@@ -21,6 +22,12 @@ interface FormData {
   category_id: string;
   is_anonymous: boolean;
   image_url: string;
+
+  pickup_address_line1: string;
+  pickup_city: string;
+  pickup_state: string;
+  pickup_postal_code: string;
+  pickup_country: string;
 }
 
 interface FormErrors {
@@ -29,18 +36,22 @@ interface FormErrors {
   quantity?: string;
   condition?: string;
   category_id?: string;
+  pickup_address_line1?: string;
+  pickup_city?: string;
+  pickup_state?: string;
+  pickup_postal_code?: string;
   general?: string;
 }
 
 const CATEGORIES: Category[] = [
-  { id: 1, name: "Electronics",  slug: "electronics" },
-  { id: 2, name: "Clothing",     slug: "clothing"    },
-  { id: 3, name: "Books",        slug: "books"       },
-  { id: 4, name: "Home & Garden",slug: "home-garden" },
-  { id: 5, name: "Sports",       slug: "sports"      },
-  { id: 6, name: "Toys & Games", slug: "toys-games"  },
-  { id: 7, name: "Vehicles",     slug: "vehicles"    },
-  { id: 8, name: "Other",        slug: "other"       },
+  { id: 1, name: "Electronics", slug: "electronics" },
+  { id: 2, name: "Clothing", slug: "clothing" },
+  { id: 3, name: "Books", slug: "books" },
+  { id: 4, name: "Home & Garden", slug: "home-garden" },
+  { id: 5, name: "Sports", slug: "sports" },
+  { id: 6, name: "Toys & Games", slug: "toys-games" },
+  { id: 7, name: "Vehicles", slug: "vehicles" },
+  { id: 8, name: "Other", slug: "other" },
 ];
 
 export default function EditListingPage() {
@@ -49,33 +60,40 @@ export default function EditListingPage() {
   const listingId = params.id;
 
   const [loadingListing, setLoadingListing] = useState(true);
-  const [submitting, setSubmitting]         = useState(false);
-  const [errors, setErrors]                 = useState<FormErrors>({});
-  const [success, setSuccess]               = useState(false);
-  const [notFound, setNotFound]             = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [success, setSuccess] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   const [form, setForm] = useState<FormData>({
-    title:        "",
-    description:  "",
-    price:        "",
-    quantity:     "1",
-    condition:    "used",
-    category_id:  "",
+    title: "",
+    description: "",
+    price: "",
+    quantity: "1",
+    condition: "used",
+    category_id: "",
     is_anonymous: false,
-    image_url:    "",
+    image_url: "",
+
+    pickup_address_line1: "",
+    pickup_city: "",
+    pickup_state: "",
+    pickup_postal_code: "",
+    pickup_country: "Ireland",
   });
 
-  // ── Fetch existing listing and pre-fill form ──────────────
   useEffect(() => {
     async function fetchListing() {
       try {
         const res = await fetch(`/api/listings/${listingId}`);
-        if (!res.ok) { setNotFound(true); return; }
+        if (!res.ok) {
+          setNotFound(true);
+          return;
+        }
 
         const data = await res.json();
         const l = data.listing;
 
-        // Check session to make sure this user owns the listing
         const sessionRes = await fetch("/api/auth/session");
         const sessionData = await sessionRes.json();
 
@@ -84,16 +102,21 @@ export default function EditListingPage() {
           return;
         }
 
-        // Pre-fill form with existing data
         setForm({
-          title:        l.title ?? "",
-          description:  l.description ?? "",
-          price:        l.price ?? "",
-          quantity:     String(l.quantity ?? 1),
-          condition:    l.condition ?? "used",
-          category_id:  String(l.category_id ?? ""),
+          title: l.title ?? "",
+          description: l.description ?? "",
+          price: l.price ?? "",
+          quantity: String(l.quantity ?? 1),
+          condition: l.condition ?? "used",
+          category_id: String(l.category_id ?? ""),
           is_anonymous: l.is_anonymous ?? false,
-          image_url:    l.images?.[0]?.image_url ?? "",
+          image_url: l.images?.[0]?.image_url ?? "",
+
+          pickup_address_line1: l.pickup_address_line1 ?? "",
+          pickup_city: l.pickup_city ?? "",
+          pickup_state: l.pickup_state ?? "",
+          pickup_postal_code: l.pickup_postal_code ?? "",
+          pickup_country: l.pickup_country ?? "Ireland",
         });
       } catch {
         setNotFound(true);
@@ -103,16 +126,18 @@ export default function EditListingPage() {
     }
 
     fetchListing();
-  }, [listingId]);
+  }, [listingId, router]);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) {
     const { name, value, type } = e.target;
+
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }));
+
     if (errors[name as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
@@ -124,20 +149,41 @@ export default function EditListingPage() {
     if (!form.title.trim() || form.title.trim().length < 3) {
       newErrors.title = "Title must be at least 3 characters";
     }
+
     if (form.title.trim().length > 100) {
       newErrors.title = "Title must be 100 characters or less";
     }
+
     if (!form.price || isNaN(parseFloat(form.price)) || parseFloat(form.price) < 0) {
       newErrors.price = "Enter a valid price";
     }
+
     if (!form.quantity || isNaN(parseInt(form.quantity)) || parseInt(form.quantity) < 0) {
       newErrors.quantity = "Quantity must be 0 or more";
     }
+
     if (!form.condition) {
       newErrors.condition = "Select a condition";
     }
+
     if (!form.category_id) {
       newErrors.category_id = "Select a category";
+    }
+
+    if (!form.pickup_address_line1.trim()) {
+      newErrors.pickup_address_line1 = "Pickup address is required";
+    }
+
+    if (!form.pickup_city.trim()) {
+      newErrors.pickup_city = "City is required";
+    }
+
+    if (!form.pickup_state.trim()) {
+      newErrors.pickup_state = "County / State is required";
+    }
+
+    if (!form.pickup_postal_code.trim()) {
+      newErrors.pickup_postal_code = "Postal code is required";
     }
 
     setErrors(newErrors);
@@ -146,6 +192,7 @@ export default function EditListingPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
     if (!validate()) return;
 
     setSubmitting(true);
@@ -156,14 +203,20 @@ export default function EditListingPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title:        form.title.trim(),
-          description:  form.description.trim(),
-          price:        parseFloat(form.price),
-          quantity:     parseInt(form.quantity),
-          condition:    form.condition,
-          category_id:  parseInt(form.category_id),
+          title: form.title.trim(),
+          description: form.description.trim(),
+          price: parseFloat(form.price),
+          quantity: parseInt(form.quantity),
+          condition: form.condition,
+          category_id: parseInt(form.category_id),
           is_anonymous: form.is_anonymous,
-          image_url:    form.image_url.trim() || undefined,
+          image_url: form.image_url.trim() || undefined,
+
+          pickup_address_line1: form.pickup_address_line1.trim(),
+          pickup_city: form.pickup_city.trim(),
+          pickup_state: form.pickup_state.trim(),
+          pickup_postal_code: form.pickup_postal_code.trim(),
+          pickup_country: form.pickup_country.trim(),
         }),
       });
 
@@ -175,10 +228,10 @@ export default function EditListingPage() {
       }
 
       setSuccess(true);
+
       setTimeout(() => {
         router.push(`/listings/${listingId}`);
       }, 1500);
-
     } catch {
       setErrors({ general: "Something went wrong. Please try again." });
     } finally {
@@ -200,8 +253,12 @@ export default function EditListingPage() {
     return (
       <PageLayout title="Edit listing">
         <div className="text-center py-24">
-          <p className="text-slate-400">Listing not found or you don't have permission to edit it.</p>
-          <Button href="/dashboard" className="mt-4">Back to dashboard</Button>
+          <p className="text-slate-400">
+            Listing not found or you don't have permission to edit it.
+          </p>
+          <Button href="/dashboard" className="mt-4">
+            Back to dashboard
+          </Button>
         </div>
       </PageLayout>
     );
@@ -229,7 +286,6 @@ export default function EditListingPage() {
 
         <form onSubmit={handleSubmit} noValidate>
           <Card className="flex flex-col gap-6">
-
             <Input
               label="Title"
               name="title"
@@ -250,14 +306,15 @@ export default function EditListingPage() {
               rows={4}
             />
 
-            {/* Price + Quantity */}
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-slate-300">
                   Price (€) <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">€</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
+                    €
+                  </span>
                   <input
                     type="number"
                     name="price"
@@ -266,7 +323,9 @@ export default function EditListingPage() {
                     step="0.01"
                     value={form.price}
                     onChange={handleChange}
-                    className={`w-full bg-slate-800/60 border ${errors.price ? "border-red-500/50" : "border-slate-700"} rounded-xl pl-7 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all`}
+                    className={`w-full bg-slate-800/60 border ${
+                      errors.price ? "border-red-500/50" : "border-slate-700"
+                    } rounded-xl pl-7 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all`}
                   />
                 </div>
                 {errors.price && <p className="text-xs text-red-400">{errors.price}</p>}
@@ -284,7 +343,6 @@ export default function EditListingPage() {
               />
             </div>
 
-            {/* Category + Condition */}
             <div className="grid grid-cols-2 gap-4">
               <Select
                 label="Category"
@@ -295,7 +353,9 @@ export default function EditListingPage() {
               >
                 <option value="">Select category</option>
                 {CATEGORIES.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
                 ))}
               </Select>
 
@@ -317,7 +377,50 @@ export default function EditListingPage() {
               currentImage={form.image_url}
             />
 
-            {/* Anonymous toggle */}
+            <div className="border border-slate-700/50 rounded-xl p-4 bg-slate-800/40">
+              <h3 className="text-sm font-semibold text-white mb-3">Pickup address</h3>
+              <p className="text-xs text-slate-500 mb-4">
+                This is used to determine whether local collection can be offered to nearby buyers.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Address line 1"
+                  name="pickup_address_line1"
+                  value={form.pickup_address_line1}
+                  onChange={handleChange}
+                  error={errors.pickup_address_line1}
+                />
+                <Input
+                  label="City"
+                  name="pickup_city"
+                  value={form.pickup_city}
+                  onChange={handleChange}
+                  error={errors.pickup_city}
+                />
+                <Input
+                  label="County / State"
+                  name="pickup_state"
+                  value={form.pickup_state}
+                  onChange={handleChange}
+                  error={errors.pickup_state}
+                />
+                <Input
+                  label="Postal code"
+                  name="pickup_postal_code"
+                  value={form.pickup_postal_code}
+                  onChange={handleChange}
+                  error={errors.pickup_postal_code}
+                />
+                <Input
+                  label="Country"
+                  name="pickup_country"
+                  value={form.pickup_country}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
             <div className="flex items-start gap-3 p-4 bg-slate-800/40 rounded-xl border border-slate-700/50">
               <input
                 type="checkbox"
@@ -338,19 +441,10 @@ export default function EditListingPage() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button
-                type="submit"
-                disabled={submitting || success}
-                size="lg"
-                fullWidth
-              >
+              <Button type="submit" disabled={submitting || success} size="lg" fullWidth>
                 {submitting ? "Saving changes..." : "Save changes"}
               </Button>
-              <Button
-                href={`/listings/${listingId}`}
-                variant="secondary"
-                size="lg"
-              >
+              <Button href={`/listings/${listingId}`} variant="secondary" size="lg">
                 Cancel
               </Button>
             </div>

@@ -107,14 +107,22 @@ function PaymentForm({
   );
 }
 
- function CheckoutPage() {
+function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const discountCode = searchParams.get("discount") ?? "";
+
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [summary, setSummary] = useState<CartSummary | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+
+  const [deliveryMethod, setDeliveryMethod] = useState<"shipping" | "pickup">("shipping");
+  const [pickupInfo, setPickupInfo] = useState<{
+    pickupDistanceKm: string;
+    pickupRadiusKm: number;
+    shippingCost: string;
+  } | null>(null);
 
   const [fullName, setFullName] = useState("");
   const [addressLine1, setAddressLine1] = useState("");
@@ -129,10 +137,11 @@ function PaymentForm({
   const [error, setError] = useState("");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
-useEffect(() => {
-  const saved = localStorage.getItem("theme");
-  if (saved === "light") setTheme("light");
-}, []);
+  useEffect(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved === "light") setTheme("light");
+  }, []);
+
   async function fetchAddresses() {
     const res = await fetch("/api/me/addresses");
 
@@ -194,12 +203,17 @@ useEffect(() => {
   async function initialisePayment(addressId: number) {
     setCreatingPayment(true);
     setError("");
+    setPickupInfo(null);
 
     try {
       const checkoutRes = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shipping_address_id: addressId, discount_code: discountCode }),
+        body: JSON.stringify({
+          shipping_address_id: addressId,
+          discount_code: discountCode,
+          delivery_method: deliveryMethod,
+        }),
       });
 
       const checkoutData = await checkoutRes.json();
@@ -217,8 +231,19 @@ useEffect(() => {
               ...prev,
               total: parseFloat(checkoutData.total),
             }
-          : prev
+          : {
+              item_count: checkoutData.itemCount,
+              total: parseFloat(checkoutData.total),
+            }
       );
+
+      if (checkoutData.deliveryMethod === "pickup") {
+        setPickupInfo({
+          pickupDistanceKm: checkoutData.pickupDistanceKm,
+          pickupRadiusKm: checkoutData.pickupRadiusKm,
+          shippingCost: checkoutData.shippingCost,
+        });
+      }
     } finally {
       setCreatingPayment(false);
     }
@@ -227,7 +252,9 @@ useEffect(() => {
   useEffect(() => {
     async function initCheckout() {
       try {
-        const cartRes = await fetch(`/api/cart${discountCode ? `?discount=${discountCode}` : ""}`);
+        const cartRes = await fetch(
+          `/api/cart${discountCode ? `?discount=${discountCode}` : ""}`
+        );
 
         if (cartRes.status === 401) {
           router.push("/auth/login");
@@ -251,22 +278,25 @@ useEffect(() => {
     }
 
     initCheckout();
-  }, [router]);
+  }, [router, discountCode]);
 
- const stripeOptions = {
-  clientSecret: clientSecret ?? "",
-  appearance: {
-    theme: theme === "light" ? "stripe" as const : "night" as const,
-    variables: {
-      colorPrimary: "#6366f1",
-      colorBackground: theme === "light" ? "#ffffff" : "#1e293b",
-      colorText: theme === "light" ? "#0f172a" : "#f1f5f9",
-      colorDanger: "#ef4444",
-      borderRadius: "12px",
-      fontFamily: "inherit",
+  const displayShipping = deliveryMethod === "pickup" ? 0 : 4.99;
+  const displayTotal = summary ? summary.total + displayShipping : 0;
+
+  const stripeOptions = {
+    clientSecret: clientSecret ?? "",
+    appearance: {
+      theme: theme === "light" ? ("stripe" as const) : ("night" as const),
+      variables: {
+        colorPrimary: "#6366f1",
+        colorBackground: theme === "light" ? "#ffffff" : "#1e293b",
+        colorText: theme === "light" ? "#0f172a" : "#f1f5f9",
+        colorDanger: "#ef4444",
+        borderRadius: "12px",
+        fontFamily: "inherit",
+      },
     },
-  },
-};
+  };
 
   return (
     <PageLayout
@@ -288,7 +318,7 @@ useEffect(() => {
           <>
             <Card>
               <h2 className="text-lg font-bold text-white mb-4">
-                Shipping address
+                Address
               </h2>
 
               {addresses.length > 0 && (
@@ -333,13 +363,48 @@ useEffect(() => {
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-                  <input className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="Address line 1" value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} />
-                  <input className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="Address line 2" value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} />
-                  <input className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
-                  <input className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="County / State" value={stateValue} onChange={(e) => setStateValue(e.target.value)} />
-                  <input className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="Postal code" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
-                  <input className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm sm:col-span-2" placeholder="Country" value={country} onChange={(e) => setCountry(e.target.value)} />
+                  <input
+                    className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+                    placeholder="Full name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                  <input
+                    className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+                    placeholder="Address line 1"
+                    value={addressLine1}
+                    onChange={(e) => setAddressLine1(e.target.value)}
+                  />
+                  <input
+                    className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+                    placeholder="Address line 2"
+                    value={addressLine2}
+                    onChange={(e) => setAddressLine2(e.target.value)}
+                  />
+                  <input
+                    className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+                    placeholder="City"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                  />
+                  <input
+                    className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+                    placeholder="County / State"
+                    value={stateValue}
+                    onChange={(e) => setStateValue(e.target.value)}
+                  />
+                  <input
+                    className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+                    placeholder="Postal code"
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(e.target.value)}
+                  />
+                  <input
+                    className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm sm:col-span-2"
+                    placeholder="Country"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                  />
                 </div>
 
                 <Button
@@ -350,6 +415,54 @@ useEffect(() => {
                 >
                   Add address
                 </Button>
+              </div>
+            </Card>
+
+            <Card>
+              <h2 className="text-lg font-bold text-white mb-4">
+                Delivery method
+              </h2>
+
+              <div className="flex flex-col gap-3">
+                <label
+                  className={`border rounded-xl p-4 cursor-pointer ${
+                    deliveryMethod === "shipping"
+                      ? "border-indigo-500 bg-indigo-500/10"
+                      : "border-slate-700 bg-slate-800/40"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="delivery_method"
+                    checked={deliveryMethod === "shipping"}
+                    onChange={() => setDeliveryMethod("shipping")}
+                    className="mr-2"
+                  />
+                  <span className="text-white font-medium">Shipping</span>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Standard delivery for €4.99.
+                  </p>
+                </label>
+
+                <label
+                  className={`border rounded-xl p-4 cursor-pointer ${
+                    deliveryMethod === "pickup"
+                      ? "border-indigo-500 bg-indigo-500/10"
+                      : "border-slate-700 bg-slate-800/40"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="delivery_method"
+                    checked={deliveryMethod === "pickup"}
+                    onChange={() => setDeliveryMethod("pickup")}
+                    className="mr-2"
+                  />
+                  <span className="text-white font-medium">Local pickup</span>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Only allowed if your saved address is close enough to the seller.
+                  </p>
+                </label>
               </div>
             </Card>
 
@@ -367,14 +480,18 @@ useEffect(() => {
                     €{summary.total.toFixed(2)}
                   </span>
                 </div>
+
                 <div className="flex justify-between">
                   <span className="text-slate-400">Shipping</span>
-                  <span className="text-white">€4.99</span>
+                  <span className="text-white">
+                    €{displayShipping.toFixed(2)}
+                  </span>
                 </div>
+
                 <div className="border-t border-slate-800 pt-3 flex justify-between">
                   <span className="font-semibold text-white">Total</span>
                   <span className="font-bold text-xl text-white">
-                    €{(summary.total + 4.99).toFixed(2)}
+                    €{displayTotal.toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -382,16 +499,17 @@ useEffect(() => {
               <Button
                 onClick={() => {
                   if (!selectedAddressId) {
-                    setError("Please add or select a shipping address");
+                    setError("Please add or select an address");
                     return;
                   }
+
                   initialisePayment(selectedAddressId);
                 }}
                 disabled={creatingPayment}
                 size="lg"
                 fullWidth
               >
-                {creatingPayment ? "Preparing payment..." : "Continue to payment"}
+                {creatingPayment ? "Checking delivery..." : "Continue to payment"}
               </Button>
             </Card>
           </>
@@ -402,6 +520,14 @@ useEffect(() => {
             <h2 className="text-lg font-bold text-white mb-6">
               Payment details
             </h2>
+
+            {pickupInfo && (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mb-6">
+                <p className="text-emerald-400 text-xs font-medium">
+                  Local pickup approved. Distance: {pickupInfo.pickupDistanceKm}km.
+                </p>
+              </div>
+            )}
 
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-6">
               <p className="text-amber-400 text-xs font-medium">
@@ -423,6 +549,7 @@ useEffect(() => {
     </PageLayout>
   );
 }
+
 export default function CheckoutPageWrapper() {
   return (
     <Suspense fallback={<div className="text-slate-400 p-8">Loading...</div>}>

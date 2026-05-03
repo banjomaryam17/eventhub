@@ -33,6 +33,8 @@ export async function POST(req: Request) {
     paymentIntent.metadata.shipping_address_id,
   );
   const shippingCost = parseFloat(paymentIntent.metadata.shipping_cost ?? "0");
+  const deliveryMethod = paymentIntent.metadata.delivery_method ?? "shipping";
+  const pickupDistanceKm = parseFloat(paymentIntent.metadata.pickup_distance_km ?? "0");
 
   if (!userId || !cartId || !shippingAddressId) {
     console.error("Webhook missing required metadata:", paymentIntent.metadata);
@@ -91,9 +93,11 @@ export async function POST(req: Request) {
           discount_amount,
           total_price,
           status,
-          stripe_payment_intent_id
+          stripe_payment_intent_id,
+          delivery_method,
+          pickup_distance_km
         )
-       VALUES ($1, $2, $3, $4, FALSE, 0, $5, 'pending', $6)
+       VALUES ($1, $2, $3, $4, FALSE, 0, $5, 'pending', $6, $7, $8)
        RETURNING id`,
       [
         userId,
@@ -102,6 +106,8 @@ export async function POST(req: Request) {
         shippingCost.toFixed(2),
         totalPrice.toFixed(2),
         paymentIntent.id,
+        deliveryMethod,
+        pickupDistanceKm.toFixed(2),
       ],
     );
 
