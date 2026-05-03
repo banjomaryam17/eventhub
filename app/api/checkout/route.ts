@@ -65,12 +65,12 @@ export async function POST(req: Request) {
 
     const buyerAddress = addressCheck.rows[0];
 
-    if (buyerAddress.latitude === null || buyerAddress.longitude === null) {
-      return NextResponse.json(
-        { error: "Your address needs location coordinates. Please re-add the address." },
-        { status: 400 }
-      );
-    }
+    if (delivery_method === "pickup" && (buyerAddress.latitude === null || buyerAddress.longitude === null)) {
+  return NextResponse.json(
+    { error: "Your address needs location coordinates. Please re-add the address." },
+    { status: 400 }
+  );
+}
 
     const cartResult = await pool.query(
       "SELECT id FROM carts WHERE user_id = $1",
