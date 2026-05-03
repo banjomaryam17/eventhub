@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Payment not completed" }, { status: 400 });
     }
 
-    // Check order doesn't already exist (webhook may have already created it)
+    // Check order doesn't already exist
     const existing = await pool.query(
       "SELECT id FROM orders WHERE stripe_payment_intent_id = $1",
       [paymentIntentId]
