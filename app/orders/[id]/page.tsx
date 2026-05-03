@@ -28,6 +28,63 @@ export default function OrderPage() {
     fetchOrder();
   }, [params.id]);
 
+  function getDeliveryInfo(status: string, createdAt: string) {
+    const orderDate = new Date(createdAt);
+    const dispatchDate = new Date(orderDate);
+    dispatchDate.setDate(dispatchDate.getDate() + 2);
+    const deliveryDate = new Date(orderDate);
+    deliveryDate.setDate(deliveryDate.getDate() + 7);
+
+    const format = (d: Date) => d.toLocaleDateString("en-IE", {
+      day: "numeric", month: "long"
+    });
+
+    switch (status) {
+      case "pending":
+        return {
+          icon: "🕐",
+          title: "Awaiting seller confirmation",
+          message: `The seller will confirm your order shortly. Expected dispatch by ${format(dispatchDate)}.`,
+          color: "border-amber-500/20 bg-amber-500/5",
+          textColor: "text-amber-400",
+        };
+      case "processing":
+        return {
+          icon: "📦",
+          title: "Order is being prepared",
+          message: `The seller is preparing your order. Expected dispatch by ${format(dispatchDate)}.`,
+          color: "border-blue-500/20 bg-blue-500/5",
+          textColor: "text-blue-400",
+        };
+      case "shipped":
+        return {
+          icon: "🚚",
+          title: "Your order is on its way!",
+          message: `Estimated delivery by ${format(deliveryDate)}. Usually 3-5 business days after dispatch.`,
+          color: "border-indigo-500/20 bg-indigo-500/5",
+          textColor: "text-indigo-400",
+        };
+      case "delivered":
+        return {
+          icon: "✅",
+          title: "Order delivered",
+          message: "Your order has been delivered. Enjoy your purchase!",
+          color: "border-emerald-500/20 bg-emerald-500/5",
+          textColor: "text-emerald-400",
+        };
+      case "cancelled":
+        return {
+          icon: "❌",
+          title: "Order cancelled",
+          message: "This order has been cancelled. You have not been charged.",
+          color: "border-red-500/20 bg-red-500/5",
+          textColor: "text-red-400",
+        };
+      default:
+        return null;
+    }
+  }
+
   if (loading) return <PageLayout><LoadingSpinner message="Loading order..." /></PageLayout>;
 
   if (error) return (
@@ -37,6 +94,8 @@ export default function OrderPage() {
       </div>
     </PageLayout>
   );
+
+  const deliveryInfo = getDeliveryInfo(order.status, order.created_at);
 
   return (
     <PageLayout title={`Order #${order.id}`} showBack backHref="/orders">
@@ -63,6 +122,27 @@ export default function OrderPage() {
             </div>
           </div>
         </Card>
+
+        {/* Delivery estimate */}
+        {deliveryInfo && (
+          <div className={`border rounded-xl p-4 ${deliveryInfo.color}`}>
+            <div className="flex items-start gap-3">
+              <span className="text-xl">{deliveryInfo.icon}</span>
+              <div>
+                <p className={`text-sm font-semibold ${deliveryInfo.textColor}`}>
+                  {deliveryInfo.title}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">{deliveryInfo.message}</p>
+                {order.status === "shipped" && (
+                  <ul className="text-xs text-slate-500 mt-2 flex flex-col gap-1">
+                    <li>📬 Check back here to track your order status</li>
+                    <li>✉️ Contact the seller if you have any questions</li>
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Items */}
         <div>
