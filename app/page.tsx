@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import ConfirmModal from "@/components/ConfirmModal";
 import ThemeToggle from "@/components/ThemeToggle";
 
 interface SessionUser {
@@ -10,7 +11,6 @@ interface SessionUser {
   username: string;
   role: string;
 }
-
 //CATEGORIES
 const CATEGORIES = [
   {
@@ -263,6 +263,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [listings, setListings] = useState<any[]>([]);
+  const [modal, setModal] = useState<any>(null);
   const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
@@ -447,7 +448,16 @@ export default function HomePage() {
                           </span>
                         </Link>
                         <button
-                          onClick={handleLogout}
+                          onClick={() =>
+                            setModal({
+                              title: "Log out",
+                              message:
+                                "Are you sure you want to log out of your account?",
+                              confirmLabel: "Log out",
+                              variant: "warning",
+                              onConfirm: handleLogout,
+                            })
+                          }
                           className="text-xs text-slate-500 hover:text-white transition-colors"
                         >
                           Logout
@@ -711,6 +721,7 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+      <ConfirmModal config={modal} onClose={() => setModal(null)} />
     </div>
   );
 }
