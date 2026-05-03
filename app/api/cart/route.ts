@@ -10,8 +10,6 @@ export async function GET(req: Request) {
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
-
-    // Get cart with all items and listing details in one query
     const result = await pool.query(
       `SELECT
         ci.quantity                 AS cart_quantity,
@@ -143,8 +141,7 @@ export async function POST(req: Request) {
       );
     }
 
-    //  Get or create cart for this user
-    // ON CONFLICT DO NOTHING means if cart already exists, just return it
+    //  Get or create cart for user
     await pool.query(
       `INSERT INTO carts (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
       [session.userId]
@@ -155,9 +152,6 @@ export async function POST(req: Request) {
       [session.userId]
     );
     const cartId = cartResult.rows[0].id;
-
-    // ── Add item or increase quantity if already in cart ────
-    // ON CONFLICT updates quantity instead of throwing an error
     await pool.query(
       `INSERT INTO cart_items (cart_id, listing_id, quantity)
        VALUES ($1, $2, $3)

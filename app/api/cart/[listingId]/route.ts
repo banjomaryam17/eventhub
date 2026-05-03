@@ -48,7 +48,7 @@ export async function PUT(
       );
     }
 
-    //  Get user's cart
+    //  Gets user's cart
     const cartResult = await pool.query(
       "SELECT id FROM carts WHERE user_id = $1",
       [session.userId]
@@ -85,7 +85,7 @@ export async function PUT(
 
 
 //DELETE /api/cart/[listingId] 
-// Remove a specific item from the cart
+// Removes a specific item from the cart
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ listingId: string }> }
@@ -100,8 +100,6 @@ export async function DELETE(
     if (isNaN(listingId)) {
       return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
     }
-
-    //Get user's cart 
     const cartResult = await pool.query(
       "SELECT id FROM carts WHERE user_id = $1",
       [session.userId]

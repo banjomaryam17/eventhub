@@ -72,8 +72,6 @@ export async function GET(
        WHERE seller_id = $1 AND is_active = TRUE`,
       [userId]
     );
-
-    // Fetch reviews with reviewer username
     const reviewsResult = await pool.query(
       `SELECT r.rating, r.content, r.created_at, u.username AS reviewer_username
        FROM reviews r

@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 
-// ── GET /api/admin/orders/[id] ────────────────────────────────
+// ── GET /api/admin/orders/[id]
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -73,7 +73,6 @@ export async function PUT(
     const body = await req.json();
     const { status } = body;
 
-    // Must match your order_status_enum exactly
     const validStatuses = ["pending", "processing", "shipped", "delivered", "cancelled", "refunded"];
     if (!status || !validStatuses.includes(status)) {
       return NextResponse.json(

@@ -14,14 +14,14 @@ export async function POST(req: Request) {
       [email.trim().toLowerCase()]
     );
 
-    // Always return success even if user not found (security best practice)
+    // Always return success even if user not found
     if (userResult.rows.length === 0) {
       return NextResponse.json({ message: "Request submitted" });
     }
 
     const user = userResult.rows[0];
 
-    // Check no pending request already exists
+    // Checks if no pending request already exists
     const existing = await pool.query(
       `SELECT id FROM password_reset_requests 
        WHERE user_id = $1 AND status = 'pending'`,

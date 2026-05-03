@@ -13,13 +13,10 @@ export async function POST(req: Request) {
     const { paymentIntentId } = await req.json();
     if (!paymentIntentId) return NextResponse.json({ error: "Missing payment intent" }, { status: 400 });
 
-    // Verify payment succeeded with Stripe
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     if (paymentIntent.status !== "succeeded") {
       return NextResponse.json({ error: "Payment not completed" }, { status: 400 });
     }
-
-    // Check if webhook already created the order — if so just return success
     const existing = await pool.query(
       "SELECT id FROM orders WHERE stripe_payment_intent_id = $1",
       [paymentIntentId]
@@ -39,9 +36,6 @@ export async function POST(req: Request) {
     if (retryCheck.rows.length > 0) {
       return NextResponse.json({ success: true, orderId: retryCheck.rows[0].id });
     }
-
-    // Webhook still hasn't fired — return success anyway since payment succeeded
-    // The webhook will create the order asynchronously
     return NextResponse.json({ success: true });
 
   } catch (err) {

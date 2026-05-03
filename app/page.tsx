@@ -598,7 +598,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* CATEGORIES — SVG icons */}
+        {/* CATEGORIES */}
         <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
           <h2 className="text-lg font-bold text-white mb-6">
             Browse by category

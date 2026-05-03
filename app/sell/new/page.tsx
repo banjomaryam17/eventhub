@@ -106,7 +106,6 @@ export default function CreateListingPage() {
           pickup_country: defaultAddress.country ?? "Ireland",
         }));
       } catch {
-        // silent fail
       }
     }
 

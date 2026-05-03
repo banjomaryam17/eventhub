@@ -155,7 +155,7 @@ export async function POST(req: Request) {
     }
 
     await client.query("DELETE FROM cart_items WHERE cart_id = $1", [cartId]);
-    // Record discount usage if a code was used
+    // Record discount usage 
     const usedDiscountCode = paymentIntent.metadata.discount_code;
     if (usedDiscountCode) {
       await client.query(

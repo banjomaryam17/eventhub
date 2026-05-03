@@ -105,8 +105,6 @@ export async function PATCH(
     if (!status || typeof status !== "string") {
       return NextResponse.json({ error: "Status is required" }, { status: 400 });
     }
-
-    // Fetch order with buyer_id
     const orderResult = await pool.query(
       `SELECT id, status, buyer_id FROM orders WHERE id = $1`,
       [orderId]

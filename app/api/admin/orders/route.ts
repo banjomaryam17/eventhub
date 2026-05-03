@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 
-// ── GET /api/admin/orders ─────────────────────────────────────
+//  GET /api/admin/orders
 // Returns all orders on the platform — admin only
 export async function GET() {
   try {
