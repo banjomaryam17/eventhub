@@ -34,7 +34,7 @@ export interface Coordinates {
     const res = await fetch(url.toString(), {
       headers: {
         "User-Agent": userAgent,
-        Referer: "https://haul.co",
+        Referer: "https://haul-co.vercel.app",
       },
     });
   
