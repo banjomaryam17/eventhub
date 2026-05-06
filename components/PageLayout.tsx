@@ -54,7 +54,8 @@ export default function PageLayout({
 
       <footer className="border-t border-slate-800/60 py-6 mt-auto">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between flex-wrap gap-4">
-          <p className="text-xs text-slate-600">© 2026 Haul.co. All rights reserved.</p><p>Contact: elliotdelaney05@gmail.com</p>
+          <p className="text-xs text-slate-600">© 2026 Haul.co. All rights reserved.</p>
+          <p className="text-xs text-slate-600">Contact: elliotdelaney05@gmail.com</p>
           <div className="flex items-center gap-4">
             <a href="/terms" className="text-xs text-slate-600 hover:text-slate-400 transition-colors">Terms</a>
             <a href="/privacy" className="text-xs text-slate-600 hover:text-slate-400 transition-colors">Privacy</a>
