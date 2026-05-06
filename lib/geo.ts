@@ -85,7 +85,7 @@ export interface Coordinates {
     if (!res.ok) {
       console.error("openrouteservice distance failed:", res.status);
       return null;
-    }
+   }
   
     const data = await res.json();
     const metres = data?.routes?.[0]?.summary?.distance;
