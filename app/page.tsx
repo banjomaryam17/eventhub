@@ -699,6 +699,12 @@ export default function HomePage() {
           <p className="text-xs text-slate-600">
             © 2026 Haul.co. All rights reserved.
           </p>
+          <p className="text-xs text-slate-600">
+            Contact: elliotdelaney05@gmail.com
+            </p>
+            <p className="text-cs text-slate-600">
+              banjomaryam21@gmail.com
+            </p>
           <div className="flex items-center gap-4">
             <a
               href="/cookies"
